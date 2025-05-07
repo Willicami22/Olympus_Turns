@@ -1,5 +1,6 @@
 package edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Entitie;
 
+import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Enum.Disabilitie;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Enum.Specialization;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Enum.UserRol;
 import org.springframework.data.annotation.Id;
@@ -18,11 +19,12 @@ public class Turn {
     private LocalTime finalTime;
     private LocalTime attendedTime;
     private String status;
-    private Specialization speciality;
+    private Specialization specialization;
     private UserRol role;
     private String identityDocument;
     private String code;
-    private Boolean Priority;
+    private Boolean priority;
+    private Disabilitie disabilitie;
 
     public String getId() {
         return id;
@@ -52,9 +54,7 @@ public class Turn {
     public LocalTime getFinalTime() {
         return finalTime;
     }
-    public void setFinalTime(LocalTime finalTime) {
-        this.finalTime = finalTime;
-    }
+    public void setFinalTime(LocalTime finalTime) {this.finalTime = finalTime;}
     public LocalTime getAttendedTime() {
         return attendedTime;
     }
@@ -81,17 +81,15 @@ public class Turn {
         this.code = code;
     }
     public Boolean getPriority() {
-        return Priority;
+        return priority;
     }
-    public void setPriority(Boolean priority) {
-        Priority = priority;
-    }
+    public void setPriority(Boolean priority) {this.priority = priority;}
 
     public Specialization getSpecialization() {
-        return speciality;
+        return specialization;
     }
     public void setSpecialization(Specialization specialization) {
-        this.speciality = specialization;
+        this.specialization = specialization;
     }
     public UserRol getRole() {
         return role;
@@ -99,4 +97,6 @@ public class Turn {
     public void setRole(UserRol role) {
         this.role = role;
     }
+    public void setDisabilitie(Disabilitie disabilitie){this.disabilitie = disabilitie;}
+    public Disabilitie getDisabilitie(){return this.disabilitie;}
 }
