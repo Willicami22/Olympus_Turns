@@ -137,7 +137,8 @@ public class TurnController {
         try {
             Report report = turnService.generateReport(
                     reportDTO.getInitialDate(),
-                    reportDTO.getFinalDate()
+                    reportDTO.getFinalDate(),
+                    reportDTO.getUserRole()
             );
 
             return ResponseEntity.ok(report);

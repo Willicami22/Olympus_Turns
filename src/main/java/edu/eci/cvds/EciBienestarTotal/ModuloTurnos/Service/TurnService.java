@@ -182,10 +182,14 @@ public class TurnService {
                         .thenComparing(Turn::getInitialTime))
                 .toList();
     }
-    public Report generateReport(LocalDate from, LocalDate to) {
-
+    public Report generateReport(LocalDate from, LocalDate to, UserRol rolFilter) {
         List<Turn> allTurns = turnRepository.findByDateBetween(from, to);
 
+        if (rolFilter != null) {
+            allTurns = allTurns.stream()
+                    .filter(t -> t.getRole() == rolFilter)
+                    .toList();
+        }
 
         int total = allTurns.size();
         int completed = (int) allTurns.stream()
