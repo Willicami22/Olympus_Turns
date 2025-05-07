@@ -52,4 +52,17 @@ public class FileController {
                 })
                 .collect(Collectors.toList());
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteFile(@PathVariable String id) {
+        if (fileRepo.existsById(id)) {
+            fileRepo.deleteById(id);
+            return ResponseEntity.ok("Archivo eliminado correctamente: " + id);
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+
+
 }
