@@ -7,7 +7,6 @@ import java.time.LocalDate;
 public class ReportDTO {
     private LocalDate initialDate;
     private LocalDate finalDate;
-    private UserRol userRole;
 
     public LocalDate getInitialDate() {
         return initialDate;
@@ -25,12 +24,6 @@ public class ReportDTO {
         this.finalDate = finalDate;
     }
 
-    public UserRol getUserRole() {
-        return userRole;
-    }
 
-    public void setUserRole(UserRol userRole) {
-        this.userRole = userRole;
-    }
 }
 

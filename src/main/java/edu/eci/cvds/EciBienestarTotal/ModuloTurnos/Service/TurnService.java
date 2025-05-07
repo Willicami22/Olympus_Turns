@@ -25,40 +25,40 @@ public class TurnService {
     @Autowired
     private ReportRepository reportRepository;
 
-    public String CreateTurn(String name,String IdentityDocument, String role, Boolean priority, String specialization ) {
+    public String createTurn(String name, String identityDocument, String role, Boolean priority, String specialization) {
         Turn turn = new Turn();
         turn.setDate(LocalDate.now());
-        turn.setIdentityDocument(IdentityDocument);
+        turn.setIdentityDocument(identityDocument);
         turn.setInitialTime(LocalTime.now());
         turn.setPriority(priority);
         turn.setPatient(name);
-        if (role == "student") {
+
+        // Comparaciones correctas de strings
+        if ("student".equalsIgnoreCase(role)) {
             turn.setRole(UserRol.Student);
-        }
-        else if (role == "teacher") {
+        } else if ("teacher".equalsIgnoreCase(role)) {
             turn.setRole(UserRol.Teacher);
-        }
-        else if (role == "admin") {
+        } else if ("admin".equalsIgnoreCase(role)) {
             turn.setRole(UserRol.Administrative);
-        }
-        else {
+        } else {
             turn.setRole(UserRol.GeneralServices);
         }
-        if (specialization == "Psychology") {
+
+        if ("Psychology".equalsIgnoreCase(specialization)) {
             turn.setSpecialization(Specialization.Psychology);
-        }
-        else if (specialization == "General Medicine") {
+        } else if ("General Medicine".equalsIgnoreCase(specialization)) {
             turn.setSpecialization(Specialization.GeneralMedicine);
-        }
-        else {
+        } else {
             turn.setSpecialization(Specialization.Dentistry);
         }
+
         turn.setStatus("Active");
-        String Code = createCode(specialization);
-        turn.setCode(Code);
+        String code = createCode(specialization);
+        turn.setCode(code);
         turnRepository.save(turn);
-        return Code;
+        return code;
     }
+
 
     private String createCode(String specialization) {
         String prefix;
@@ -122,11 +122,15 @@ public class TurnService {
                 break;
         }
 
-        Optional<Turn> actualTurn = turnRepository.findFirstBySpecializationAndStatus(specEnum,"Attending");
-        actualTurn.get().setStatus("Passed");
-        actualTurn.get().setFinalTime(LocalTime.now());
-        turnRepository.save(actualTurn.get());
+        // Marcar el turno actual como "Passed"
+        Optional<Turn> actualTurn = turnRepository.findFirstBySpecializationAndStatus(specEnum, "Attending");
+        actualTurn.ifPresent(turn -> {
+            turn.setStatus("Passed");
+            turn.setFinalTime(LocalTime.now());
+            turnRepository.save(turn);
+        });
 
+        // Buscar siguiente turno prioritario
         Optional<Turn> turnoPrioritario = turnRepository
                 .findFirstBySpecializationAndDateAndPriorityIsTrueAndStatusOrderByInitialTimeAsc(
                         specEnum, LocalDate.now(), "Active");
@@ -136,19 +140,24 @@ public class TurnService {
             turn.setStatus("Attending");
             turn.setAttendedTime(LocalTime.now());
             turnRepository.save(turn);
-            return;
+            return ;
         }
 
+        // Buscar siguiente turno normal
         Optional<Turn> turnoNormal = turnRepository
                 .findFirstBySpecializationAndDateAndPriorityIsFalseAndStatusOrderByInitialTimeAsc(
                         specEnum, LocalDate.now(), "Active");
 
-        turnoNormal.ifPresent(turn -> {
+        if (turnoNormal.isPresent()) {
+            Turn turn = turnoNormal.get();
             turn.setStatus("Attending");
             turn.setAttendedTime(LocalTime.now());
             turnRepository.save(turn);
-        });
+            return;
+        }
+
     }
+
 
     public List<Turn> getNextTurns(String specialization) {
         Specialization specEnum;
@@ -173,14 +182,10 @@ public class TurnService {
                         .thenComparing(Turn::getInitialTime))
                 .toList();
     }
-    public Report generateReport(LocalDate from, LocalDate to, UserRol rolFilter) {
+    public Report generateReport(LocalDate from, LocalDate to) {
+
         List<Turn> allTurns = turnRepository.findByDateBetween(from, to);
 
-        if (rolFilter != null) {
-            allTurns = allTurns.stream()
-                    .filter(t -> t.getRole() == rolFilter)
-                    .toList();
-        }
 
         int total = allTurns.size();
         int completed = (int) allTurns.stream()
@@ -191,12 +196,10 @@ public class TurnService {
                 .filter(t -> "Passed".equalsIgnoreCase(t.getStatus()))
                 .toList();
 
-        // Tiempo promedio de espera = start - initial
         long totalWaitSeconds = completedTurns.stream()
                 .mapToLong(t -> Duration.between(t.getInitialTime(), t.getAttendedTime()).getSeconds())
                 .sum();
 
-        // Tiempo promedio de atención = end - start
         long totalAttentionSeconds = completedTurns.stream()
                 .mapToLong(t -> Duration.between(t.getAttendedTime(), t.getFinalTime()).getSeconds())
                 .sum();

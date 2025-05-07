@@ -83,7 +83,7 @@ class TurnServiceTest {
 
         when(turnRepository.countBySpecializationAndDate(Specialization.Psychology, LocalDate.now())).thenReturn(5L);
 
-        String code = turnService.CreateTurn(name, identityDocument, role, priority, specialization);
+        String code = turnService.createTurn(name, identityDocument, role, priority, specialization);
 
         assertEquals("P-6", code);
 
@@ -112,7 +112,7 @@ class TurnServiceTest {
 
         when(turnRepository.countBySpecializationAndDate(Specialization.GeneralMedicine, LocalDate.now())).thenReturn(10L);
 
-        String code = turnService.CreateTurn(name, identityDocument, role, priority, specialization);
+        String code = turnService.createTurn(name, identityDocument, role, priority, specialization);
 
         assertEquals("M-11", code);
 
@@ -136,7 +136,7 @@ class TurnServiceTest {
 
         when(turnRepository.countBySpecializationAndDate(Specialization.Dentistry, LocalDate.now())).thenReturn(2L);
 
-        String code = turnService.CreateTurn(name, identityDocument, role, priority, specialization);
+        String code = turnService.createTurn(name, identityDocument, role, priority, specialization);
 
         assertEquals("O-3", code);
 
@@ -159,7 +159,7 @@ class TurnServiceTest {
 
         when(turnRepository.countBySpecializationAndDate(Specialization.Psychology, LocalDate.now())).thenReturn(0L);
 
-        String code = turnService.CreateTurn(name, identityDocument, role, priority, specialization);
+        String code = turnService.createTurn(name, identityDocument, role, priority, specialization);
 
         assertEquals("P-1", code);
 

@@ -1,9 +1,12 @@
 package edu.eci.cvds.EciBienestarTotal.ModuloTurnos.DTO;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class TurnDTO {
     private String Code;
     private String userName;
-    private String speciality;
+    @JsonProperty("specialization")
+    private String specialization;
     private String state;
     private boolean priority;
     private String identityDocument;
@@ -22,11 +25,11 @@ public class TurnDTO {
     public void setUserName(String userName) {
         this.userName = userName;
     }
-    public String getSpeciality() {
-        return speciality;
+    public String getSpecialization() {
+        return specialization;
     }
-    public void setSpeciality(String speciality) {
-        this.speciality = speciality;
+    public void setSpecialization(String speciality) {
+        this.specialization = speciality;
     }
     public String getState() {
         return state;

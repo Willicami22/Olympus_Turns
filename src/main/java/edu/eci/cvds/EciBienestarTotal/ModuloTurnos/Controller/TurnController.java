@@ -31,12 +31,12 @@ public class TurnController {
     @PostMapping("/create")
     public ResponseEntity<Map<String, String>> CreateTurn(@RequestBody TurnDTO turnDTO) {
         try {
-            String code = turnService.CreateTurn(
+            String code = turnService.createTurn(
                     turnDTO.getUserName(),
                     turnDTO.getIdentityDocument(),
                     turnDTO.getRole(),
                     turnDTO.isPriority(),
-                    turnDTO.getSpeciality()
+                    turnDTO.getSpecialization()
             );
 
             Map<String, String> response = new HashMap<>();
@@ -103,12 +103,11 @@ public class TurnController {
         try {
             List<Turn> turnos = turnService.getNextTurns(specialization);
 
-            // Convertir la lista de entidades Turn a TurnDTO
             List<TurnDTO> turnosDTO = turnos.stream().map(turn -> {
                 TurnDTO dto = new TurnDTO();
                 dto.setCode(turn.getCode());
                 dto.setUserName(turn.getPatient());
-                dto.setSpeciality(turn.getSpecialization().toString());
+                dto.setSpecialization(turn.getSpecialization().toString());
                 dto.setState(turn.getStatus());
                 dto.setPriority(turn.getPriority());
                 dto.setIdentityDocument(turn.getIdentityDocument());
@@ -138,8 +137,7 @@ public class TurnController {
         try {
             Report report = turnService.generateReport(
                     reportDTO.getInitialDate(),
-                    reportDTO.getFinalDate(),
-                    reportDTO.getUserRole()
+                    reportDTO.getFinalDate()
             );
 
             return ResponseEntity.ok(report);

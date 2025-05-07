@@ -46,7 +46,7 @@ public class TurnControllerTest {
         turnDTO.setIdentityDocument("1234567890");
         turnDTO.setRole("student");
         turnDTO.setPriority(true);
-        turnDTO.setSpeciality("Psychology");
+        turnDTO.setSpecialization("Psychology");
 
         turn = new Turn();
         turn.setCode("P-1");
@@ -77,7 +77,7 @@ public class TurnControllerTest {
 
     @Test
     void testCreateTurn() {
-        when(turnService.CreateTurn(anyString(), anyString(), anyString(), anyBoolean(), anyString()))
+        when(turnService.createTurn(anyString(), anyString(), anyString(), anyBoolean(), anyString()))
                 .thenReturn("P-1");
 
         ResponseEntity<Map<String, String>> response = turnController.CreateTurn(turnDTO);
@@ -88,19 +88,19 @@ public class TurnControllerTest {
         assertEquals("P-1", response.getBody().get("code"));
         assertEquals("Turno creado exitosamente", response.getBody().get("message"));
 
-        verify(turnService).CreateTurn(
+        verify(turnService).createTurn(
                 turnDTO.getUserName(),
                 turnDTO.getIdentityDocument(),
                 turnDTO.getRole(),
                 turnDTO.isPriority(),
-                turnDTO.getSpeciality()
+                turnDTO.getSpecialization()
         );
     }
 
     @Test
     void testCreateTurnWithError() {
         // Arrange
-        when(turnService.CreateTurn(anyString(), anyString(), anyString(), anyBoolean(), anyString()))
+        when(turnService.createTurn(anyString(), anyString(), anyString(), anyBoolean(), anyString()))
                 .thenThrow(new RuntimeException("Error de test"));
 
 
@@ -185,7 +185,7 @@ public class TurnControllerTest {
         TurnDTO firstDTO = (TurnDTO) resultList.get(0);
         assertEquals("P-1", firstDTO.getCode());
         assertEquals("Juan Pérez", firstDTO.getUserName());
-        assertEquals("Psychology", firstDTO.getSpeciality());
+        assertEquals("Psychology", firstDTO.getSpecialization());
         assertTrue(firstDTO.isPriority());
 
         verify(turnService).getNextTurns("Psychology");

@@ -18,11 +18,11 @@ public class Turn {
     private LocalTime finalTime;
     private LocalTime attendedTime;
     private String status;
-    private Specialization speciality;
+    private Specialization specialization;
     private UserRol role;
     private String identityDocument;
     private String code;
-    private Boolean Priority;
+    private Boolean priority;
 
     public String getId() {
         return id;
@@ -79,17 +79,15 @@ public class Turn {
         this.code = code;
     }
     public Boolean getPriority() {
-        return Priority;
+        return priority;
     }
-    public void setPriority(Boolean priority) {
-        Priority = priority;
-    }
+    public void setPriority(Boolean priority) {this.priority = priority;}
 
     public Specialization getSpecialization() {
-        return speciality;
+        return specialization;
     }
     public void setSpecialization(Specialization specialization) {
-        this.speciality = specialization;
+        this.specialization = specialization;
     }
     public UserRol getRole() {
         return role;
