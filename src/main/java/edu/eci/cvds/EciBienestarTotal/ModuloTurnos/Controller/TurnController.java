@@ -1,6 +1,8 @@
 package edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Controller;
 
+import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.DTO.ReportDTO;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.DTO.TurnDTO;
+import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Entitie.Report;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Entitie.Turn;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Service.TurnService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -119,6 +121,31 @@ public class TurnController {
             Map<String, String> errorResponse = new HashMap<>();
             errorResponse.put("error", "Error al obtener la lista de turnos: " + e.getMessage());
             return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+    /**
+     * Endpoint to generate a report based on date range and user role
+     * @param reportDTO Contains the parameters for report generation
+     * @return ResponseEntity with the generated report
+     */
+    @PostMapping("/generate")
+    public ResponseEntity<Report> generateReport(@RequestBody ReportDTO reportDTO) {
+        // Validate required parameters
+        if (reportDTO.getInitialDate() == null || reportDTO.getFinalDate() == null) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        try {
+            Report report = turnService.generateReport(
+                    reportDTO.getInitialDate(),
+                    reportDTO.getFinalDate(),
+                    reportDTO.getUserRole()
+            );
+
+            return ResponseEntity.ok(report);
+        } catch (Exception e) {
+            System.err.println("Error generating report: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
         }
     }
 }

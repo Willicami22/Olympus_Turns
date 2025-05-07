@@ -1,5 +1,8 @@
 package edu.eci.cvds.EciBienestarTotal.ModuloTurnos;
 
+import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Controller.TurnController;
+import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.DTO.ReportDTO;
+import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Entitie.Report;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Entitie.Turn;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Enum.Specialization;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Enum.UserRol;
@@ -8,11 +11,10 @@ import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Repository.TurnRepository;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Service.TurnService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.*;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -36,9 +38,38 @@ class TurnServiceTest {
     @InjectMocks
     private TurnService turnService;
 
+    @Captor
+    private ArgumentCaptor<Report> reportCaptor;
+
+    private List<Turn> mockTurns;
+    private LocalDate startDate;
+    private LocalDate endDate;
+
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
+        startDate = LocalDate.of(2025, 1, 1);
+        endDate = LocalDate.of(2025, 1, 31);
+
+        mockTurns = new ArrayList<>();
+
+        createCompletedTurn(UserRol.Student, Specialization.Psychology, true);
+        createCompletedTurn(UserRol.Student, Specialization.Psychology, false);
+        createCompletedTurn(UserRol.Student, Specialization.GeneralMedicine, true);
+        createCompletedTurn(UserRol.Teacher, Specialization.GeneralMedicine, true);
+        createCompletedTurn(UserRol.Teacher, Specialization.Dentistry, false);
+        createCompletedTurn(UserRol.Administrative, Specialization.Psychology, true);
+        createCompletedTurn(UserRol.GeneralServices, Specialization.Dentistry, false);
+
+        createActiveTurn(UserRol.Student, Specialization.Psychology, true);
+        createActiveTurn(UserRol.Student, Specialization.GeneralMedicine, false);
+        createActiveTurn(UserRol.Teacher, Specialization.Dentistry, true);
+        createActiveTurn(UserRol.Administrative, Specialization.GeneralMedicine, false);
+        createActiveTurn(UserRol.GeneralServices, Specialization.Psychology, true);
+
+        when(turnRepository.findByDateBetween(startDate, endDate)).thenReturn(mockTurns);
+
+        when(reportRepository.save(any(Report.class))).thenAnswer(i -> i.getArguments()[0]);
     }
 
     @Test
@@ -372,5 +403,174 @@ class TurnServiceTest {
         assertEquals(LocalTime.of(10, 0), result.get(1).getInitialTime());
     }
 
+    private void createCompletedTurn(UserRol role, Specialization specialization, boolean priority) {
+        Turn turn = new Turn();
+        turn.setPatient("Test User");
+        turn.setIdentityDocument("123456");
+        turn.setRole(role);
+        turn.setSpecialization(specialization);
+        turn.setPriority(priority);
+        turn.setDate(LocalDate.of(2025, 1, 15));
+        turn.setInitialTime(LocalTime.of(9, 0));
+        turn.setAttendedTime(LocalTime.of(9, 30));
+        turn.setFinalTime(LocalTime.of(10, 0));
+        turn.setStatus("Passed");
+        mockTurns.add(turn);
+    }
+
+    private void createActiveTurn(UserRol role, Specialization specialization, boolean priority) {
+        Turn turn = new Turn();
+        turn.setPatient("Active User");
+        turn.setIdentityDocument("654321");
+        turn.setRole(role);
+        turn.setSpecialization(specialization);
+        turn.setPriority(priority);
+        turn.setDate(LocalDate.of(2025, 1, 15));
+        turn.setInitialTime(LocalTime.of(10, 0));
+        turn.setStatus("Active");
+        mockTurns.add(turn);
+    }
+    @Test
+    void testGenerateReportNoFilter() {
+        // Act
+        Report report = turnService.generateReport(startDate, endDate, null);
+
+        // Assert
+        assertNotNull(report);
+        assertEquals(12, report.getTotalTurns());
+        assertEquals(7, report.getTurnsCompleted());
+
+        // Verificar tiempos promedio
+        assertNotNull(report.getAvarageWaitingTime());
+        assertNotNull(report.getAverageTimeAttention());
+
+        // Verificar que se capturó el reporte correcto para guardarlo
+        verify(reportRepository).save(reportCaptor.capture());
+        Report capturedReport = reportCaptor.getValue();
+
+        assertEquals(startDate, capturedReport.getInitialDate());
+        assertEquals(endDate, capturedReport.getFinalDate());
+        assertEquals(LocalDate.now(), capturedReport.getActualDate());
+    }
+
+    @Test
+    void testGenerateReportWithStudentFilter() {
+        // Act
+        Report report = turnService.generateReport(startDate, endDate, UserRol.Student);
+
+        // Assert
+        assertNotNull(report);
+        assertEquals(5, report.getTotalTurns()); // Solo estudiantes
+        assertEquals(3, report.getTurnsCompleted()); // Solo estudiantes completados
+
+        // Verificar porcentajes
+        assertEquals(100, report.getPercentStudents()); // 100% de los filtrados son estudiantes
+        assertTrue(report.getPercentStudentsCompleted() > 0);
+        assertTrue(report.getPercentStudentsPriority() > 0);
+
+        // Los demás roles deben ser 0%
+        assertEquals(0, report.getPercentTeachers());
+        assertEquals(0, report.getPercentAdmins());
+        assertEquals(0, report.getPercentGeneralServices());
+    }
+
+    @Test
+    void testGenerateReportWithTeacherFilter() {
+        // Act
+        Report report = turnService.generateReport(startDate, endDate, UserRol.Teacher);
+
+        // Assert
+        assertNotNull(report);
+        assertEquals(3, report.getTotalTurns()); // Solo profesores
+        assertEquals(2, report.getTurnsCompleted()); // Solo profesores completados
+
+        // Verificar que los porcentajes sean correctos
+        assertEquals(100, report.getPercentTeachers());
+        assertTrue(report.getPercentTeachersCompleted() > 0);
+
+        // Los demás roles deben ser 0%
+        assertEquals(0, report.getPercentStudents());
+        assertEquals(0, report.getPercentAdmins());
+        assertEquals(0, report.getPercentGeneralServices());
+    }
+
+    @Test
+    void testReportCalculatesCorrectPercentages() {
+        Report report = turnService.generateReport(startDate, endDate, null);
+
+        assertEquals(5 * 100 / 12, report.getPercentStudents());
+        assertEquals(3 * 100 / 12, report.getPercentTeachers());
+        assertEquals(2 * 100 / 12, report.getPercentAdmins());
+        assertEquals(2 * 100 / 12, report.getPercentGeneralServices());
+
+        assertEquals(5 * 100 / 12, report.getPercentPsychology());
+        assertEquals(4 * 100 / 12, report.getPercentMedicine());
+        assertEquals(3 * 100 / 12, report.getPercentOdontology());
+
+        assertEquals(3 * 100 / 12, report.getPercentStudentsCompleted());
+        assertEquals(2 * 100 / 12, report.getPercentTeachersCompleted());
+        assertEquals(3 * 100 / 12, report.getPercentStudentsPriority());
+        assertEquals(2 * 100 / 12, report.getPercentTeachersPriority());
+    }
+
+    @Test
+    void testEmptyTurnList() {
+        when(turnRepository.findByDateBetween(startDate, endDate)).thenReturn(new ArrayList<>());
+
+        Report report = turnService.generateReport(startDate, endDate, null);
+
+        assertNotNull(report);
+        assertEquals(0, report.getTotalTurns());
+        assertEquals(0, report.getTurnsCompleted());
+
+        assertEquals(0, report.getPercentStudents());
+        assertEquals(0, report.getPercentTeachers());
+        assertEquals(0, report.getPercentAdmins());
+        assertEquals(0, report.getPercentGeneralServices());
+        assertEquals(0, report.getPercentPsychology());
+        assertEquals(0, report.getPercentMedicine());
+        assertEquals(0, report.getPercentOdontology());
+    }
+
+    @Test
+    void testNoCompletedTurns() {
+        List<Turn> onlyActiveTurns = mockTurns.stream()
+                .filter(t -> "Active".equals(t.getStatus()))
+                .toList();
+        when(turnRepository.findByDateBetween(startDate, endDate)).thenReturn(onlyActiveTurns);
+
+        Report report = turnService.generateReport(startDate, endDate, null);
+
+        assertNotNull(report);
+        assertEquals(5, report.getTotalTurns());
+        assertEquals(0, report.getTurnsCompleted());
+
+        assertEquals(LocalTime.MIDNIGHT, report.getAvarageWaitingTime());
+        assertEquals(LocalTime.MIDNIGHT, report.getAverageTimeAttention());
+
+        assertEquals(0, report.getPercentStudentsCompleted());
+        assertEquals(0, report.getPercentTeachersCompleted());
+        assertEquals(0, report.getPercentAdminsCompleted());
+        assertEquals(0, report.getPercentGeneralServicesCompleted());
+    }
+
+    @Test
+    void testPercentMethodWithNullValues() {
+
+        List<Turn> onlyStudentTurns = mockTurns.stream()
+                .filter(t -> t.getRole() == UserRol.Student)
+                .toList();
+        when(turnRepository.findByDateBetween(startDate, endDate)).thenReturn(onlyStudentTurns);
+
+        Report report = turnService.generateReport(startDate, endDate, null);
+
+        assertNotNull(report);
+
+        assertEquals(0, report.getPercentTeachers());
+        assertEquals(0, report.getPercentAdmins());
+        assertEquals(0, report.getPercentGeneralServices());
+    }
+
 }
+
 

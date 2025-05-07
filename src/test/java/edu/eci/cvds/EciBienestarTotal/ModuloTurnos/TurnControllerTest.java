@@ -1,7 +1,9 @@
 package edu.eci.cvds.EciBienestarTotal.ModuloTurnos;
 
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Controller.TurnController;
+import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.DTO.ReportDTO;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.DTO.TurnDTO;
+import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Entitie.Report;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Entitie.Turn;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Enum.Specialization;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Enum.UserRol;
@@ -219,5 +221,98 @@ public class TurnControllerTest {
 
         Map<String, String> errorMap = (Map<String, String>) response.getBody();
         assertTrue(errorMap.get("error").contains("Error al obtener turnos"));
+    }
+
+    @Test
+    void generateReport_WithValidDates_ReturnsReport() {
+        // Arrange
+        ReportDTO reportDTO = new ReportDTO();
+        reportDTO.setInitialDate(LocalDate.of(2025, 1, 1));
+        reportDTO.setFinalDate(LocalDate.of(2025, 1, 31));
+        reportDTO.setUserRole(UserRol.Student); // Asumiendo que STUDENT es un valor válido de UserRol
+
+        Report mockReport = new Report(); // Asumiendo que existe una clase Report
+        when(turnService.generateReport(reportDTO.getInitialDate(), reportDTO.getFinalDate(),
+                reportDTO.getUserRole())).thenReturn(mockReport);
+
+        // Act
+        ResponseEntity<Report> response = turnController.generateReport(reportDTO);
+
+        // Assert
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(mockReport, response.getBody());
+        verify(turnService).generateReport(reportDTO.getInitialDate(), reportDTO.getFinalDate(),
+                reportDTO.getUserRole());
+    }
+
+    @Test
+    void generateReport_WithNullInitialDate_ReturnsBadRequest() {
+        // Arrange
+        ReportDTO reportDTO = new ReportDTO();
+        reportDTO.setInitialDate(null);
+        reportDTO.setFinalDate(LocalDate.of(2025, 1, 31));
+
+        // Act
+        ResponseEntity<Report> response = turnController.generateReport(reportDTO);
+
+        // Assert
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertNull(response.getBody());
+        verify(turnService, never()).generateReport(any(), any(), any());
+    }
+
+    @Test
+    void generateReport_WithNullFinalDate_ReturnsBadRequest() {
+        // Arrange
+        ReportDTO reportDTO = new ReportDTO();
+        reportDTO.setInitialDate(LocalDate.of(2025, 1, 1));
+        reportDTO.setFinalDate(null);
+
+        // Act
+        ResponseEntity<Report> response = turnController.generateReport(reportDTO);
+
+        // Assert
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertNull(response.getBody());
+        verify(turnService, never()).generateReport(any(), any(), any());
+    }
+
+    @Test
+    void generateReport_WithNullUserRole_StillWorksCorrectly() {
+        // Arrange
+        ReportDTO reportDTO = new ReportDTO();
+        reportDTO.setInitialDate(LocalDate.of(2025, 1, 1));
+        reportDTO.setFinalDate(LocalDate.of(2025, 1, 31));
+        reportDTO.setUserRole(null); // UserRole es opcional
+
+        Report mockReport = new Report();
+        when(turnService.generateReport(reportDTO.getInitialDate(), reportDTO.getFinalDate(),
+                null)).thenReturn(mockReport);
+
+        // Act
+        ResponseEntity<Report> response = turnController.generateReport(reportDTO);
+
+        // Assert
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(mockReport, response.getBody());
+        verify(turnService).generateReport(reportDTO.getInitialDate(), reportDTO.getFinalDate(), null);
+    }
+
+    @Test
+    void generateReport_WhenServiceThrowsException_ReturnsInternalServerError() {
+        // Arrange
+        ReportDTO reportDTO = new ReportDTO();
+        reportDTO.setInitialDate(LocalDate.of(2025, 1, 1));
+        reportDTO.setFinalDate(LocalDate.of(2025, 1, 31));
+
+        when(turnService.generateReport(any(), any(), any()))
+                .thenThrow(new RuntimeException("Error generando reporte"));
+
+        // Act
+        ResponseEntity<Report> response = turnController.generateReport(reportDTO);
+
+        // Assert
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertNull(response.getBody());
     }
 }
