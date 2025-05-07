@@ -9,6 +9,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.Comparator;
 import java.util.HashMap;
@@ -18,6 +21,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/turns")
 @CrossOrigin(origins = "*")
+@Tag(name = "Turnos", description = "Gestión de turnos")
 public class TurnController {
 
     @Autowired
@@ -29,6 +33,8 @@ public class TurnController {
      * @return Code of the shift created
      */
     @PostMapping("/create")
+    @Operation(summary = "Crear Turno", description = "Crear un nuevo turno")
+    @ApiResponse(responseCode = "201", description = "Turno creado exitosamente")
     public ResponseEntity<Map<String, String>> CreateTurn(@RequestBody TurnDTO turnDTO) {
         try {
             String code = turnService.createTurn(
@@ -57,6 +63,9 @@ public class TurnController {
      * @return Confirmation message
      */
     @PutMapping("/pass")
+    @Operation(summary = "Pass  Turn", description = "Pasa el turno")
+    @ApiResponse(responseCode = "20o", description = "Turno pasado exitosamente")
+    @ApiResponse(responseCode = "404", description = "Turno no pasado")
     public ResponseEntity<Map<String, String>> PassTurn(@RequestParam String specialization) {
         try {
             turnService.PassTurn(specialization);
@@ -78,6 +87,9 @@ public class TurnController {
      * @return Confirmation message
      */
     @PutMapping("/disable")
+    @Operation(summary = "Deshabilitar turno", description = "Deshabilita un turno por su especialización")
+    @ApiResponse(responseCode = "200", description = "Turno deshabilitado")
+    @ApiResponse(responseCode = "404", description = "Turno no encontrado")
     public ResponseEntity<Map<String, String>> DisableTurn(@RequestParam String specialization) {
         try {
             turnService.DisableTurns(specialization);
@@ -99,6 +111,8 @@ public class TurnController {
      * @return List of active shifts sorted by priority and start time
      */
     @GetMapping("/list")
+    @Operation(summary = "Listar turnos", description = "Lista todos los turnos registrados")
+    @ApiResponse(responseCode = "200", description = "Lista de turnos obtenida exitosamente")
     public ResponseEntity<?> getTurns(@RequestParam String specialization) {
         try {
             List<Turn> turnos = turnService.getNextTurns(specialization);
@@ -128,6 +142,8 @@ public class TurnController {
      * @return ResponseEntity with the generated report
      */
     @PostMapping("/generate")
+    @Operation(summary = "Crear reporte", description = "Crear un nuevo reporte")
+    @ApiResponse(responseCode = "201", description = "Reporte creado exitosamente")
     public ResponseEntity<Report> generateReport(@RequestBody ReportDTO reportDTO) {
         // Validate required parameters
         if (reportDTO.getInitialDate() == null || reportDTO.getFinalDate() == null) {
