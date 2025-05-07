@@ -52,9 +52,7 @@ public class Turn {
     public LocalTime getFinalTime() {
         return finalTime;
     }
-    public void setFinalTime(LocalTime finalTime) {
-        this.finalTime = finalTime;
-    }
+    public void setFinalTime(LocalTime finalTime) {this.finalTime = finalTime;}
     public LocalTime getAttendedTime() {
         return attendedTime;
     }
