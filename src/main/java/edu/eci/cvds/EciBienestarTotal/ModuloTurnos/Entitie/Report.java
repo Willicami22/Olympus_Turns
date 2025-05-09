@@ -1,27 +1,58 @@
 package edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Entitie;
 
-import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Enum.Specialization;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Enum.UserRol;
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.HashMap;
+import java.util.Map;
 
 @Document(collection = "Report")
+@Schema(description = "Entidad que representa un reporte de turnos")
 public class Report {
+
     @Id
+    @Schema(description = "Identificador único del reporte", example = "663c9f5d98a432000a4e567d")
     private String id;
+
+    @Schema(description = "Fecha en que se generó el reporte", example = "2025-05-08")
     private LocalDate ActualDate;
+
+    @Schema(description = "Hora en que se generó el reporte", example = "15:30:45")
     private LocalTime ActualTime;
+
+    @Schema(description = "Fecha inicial del rango del reporte", example = "2025-05-01")
     private LocalDate initialDate;
+
+    @Schema(description = "Fecha final del rango del reporte", example = "2025-05-07")
     private LocalDate finalDate;
+
+    @Schema(description = "Rol de usuario aplicado como filtro (si aplica)")
     private UserRol userRole;
+
+    @Schema(description = "Cantidad total de turnos en el rango especificado", example = "50")
     private int totalTurns;
+
+    @Schema(description = "Cantidad de turnos completados en el rango", example = "45")
     private int turnsCompleted;
+
+    @Schema(description = "Tiempo promedio de espera", example = "00:10:30")
     private LocalTime AvarageWaitingTime;
+
+    @Schema(description = "Tiempo promedio de atención", example = "00:12:45")
     private LocalTime AverageTimeAttention;
-    private Specialization specialization;
+
+    @Schema(description = "Porcentaje de turnos por rol")
+    private Map<UserRol, Double> turnPercentageByRole = new HashMap<>();
+
+    @Schema(description = "Porcentaje de turnos completados por rol")
+    private Map<UserRol, Double> completedPercentageByRole = new HashMap<>();
+
+    @Schema(description = "Porcentajes de discapacidades por rol")
+    private Map<UserRol, Map<String, Double>> disabilityPercentagesByRole = new HashMap<>();
 
     public String getId() {
         return id;
@@ -83,11 +114,31 @@ public class Report {
     public void setAverageTimeAttention(LocalTime AverageTimeAttention) {
         this.AverageTimeAttention = AverageTimeAttention;
     }
-    public Specialization getSpecialization() {
-        return specialization;
-    }
-    public void setSpecialization(Specialization specialization) {
-        this.specialization = specialization;
+    public Map<UserRol, Double> getTurnPercentageByRole() {
+        return turnPercentageByRole;
     }
 
+    public void setTurnPercentageByRole(UserRol role, double percentage) {
+        turnPercentageByRole.put(role, percentage);
+    }
+
+    public Map<UserRol, Double> getCompletedPercentageByRole() {
+        return completedPercentageByRole;
+    }
+
+    public void setCompletedPercentageByRole(UserRol role, double percentage) {
+        completedPercentageByRole.put(role, percentage);
+    }
+
+    public Map<UserRol, Map<String, Double>> getDisabilityPercentagesByRole() {
+        return disabilityPercentagesByRole;
+    }
+
+    public void addDisabilityPercentage(UserRol role, String disability, double percentage) {
+        disabilityPercentagesByRole
+                .computeIfAbsent(role, k -> new HashMap<>())
+                .put(disability, percentage);
+    }
 }
+
+
