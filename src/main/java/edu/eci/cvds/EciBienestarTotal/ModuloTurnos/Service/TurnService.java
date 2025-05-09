@@ -1,7 +1,9 @@
 package edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Service;
 
+import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.DTO.TurnDTO;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Entitie.Report;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Entitie.Turn;
+import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Enum.Disabilitie;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Enum.Specialization;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Enum.UserRol;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Repository.ReportRepository;
@@ -12,10 +14,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,35 +24,23 @@ public class TurnService {
     @Autowired
     private ReportRepository reportRepository;
 
-    public String createTurn(String name, String identityDocument, String role, Boolean priority, String specialization) {
+    public String createTurn(String name, String identityDocument, UserRol role, Specialization specialization, Disabilitie disabilitie) {
         Turn turn = new Turn();
         turn.setDate(LocalDate.now());
         turn.setIdentityDocument(identityDocument);
         turn.setInitialTime(LocalTime.now());
-        turn.setPriority(priority);
         turn.setPatient(name);
-
-        // Comparaciones correctas de strings
-        if ("student".equalsIgnoreCase(role)) {
-            turn.setRole(UserRol.Student);
-        } else if ("teacher".equalsIgnoreCase(role)) {
-            turn.setRole(UserRol.Teacher);
-        } else if ("admin".equalsIgnoreCase(role)) {
-            turn.setRole(UserRol.Administrative);
-        } else {
-            turn.setRole(UserRol.GeneralServices);
+        turn.setDisabilitie(disabilitie);
+        turn.setRole(role);
+        turn.setSpecialization(specialization);
+        if (disabilitie == Disabilitie.NoTiene) {
+            turn.setPriority(false);
         }
-
-        if ("Psychology".equalsIgnoreCase(specialization)) {
-            turn.setSpecialization(Specialization.Psychology);
-        } else if ("General Medicine".equalsIgnoreCase(specialization)) {
-            turn.setSpecialization(Specialization.GeneralMedicine);
-        } else {
-            turn.setSpecialization(Specialization.Dentistry);
+        else {
+            turn.setPriority(true);
         }
-
-        turn.setStatus("Active");
-        String code = createCode(specialization);
+        turn.setStatus("Activo");
+        String code = createCode(specialization.toString());
         turn.setCode(code);
         turnRepository.save(turn);
         return code;
@@ -65,17 +52,17 @@ public class TurnService {
         Specialization specEnum;
 
         switch (specialization) {
-            case "Psychology":
+            case "Psicologia":
                 prefix = "P-";
-                specEnum = Specialization.Psychology;
+                specEnum = Specialization.Psicologia;
                 break;
-            case "General Medicine":
+            case "MedicinaGeneral":
                 prefix = "M-";
-                specEnum = Specialization.GeneralMedicine;
+                specEnum = Specialization.MedicinaGeneral;
                 break;
             default:
                 prefix = "O-";
-                specEnum = Specialization.Dentistry;
+                specEnum = Specialization.Odontologia;
                 break;
         }
         long countToday = turnRepository.countBySpecializationAndDate(specEnum, LocalDate.now());
@@ -87,21 +74,21 @@ public class TurnService {
         Specialization specEnum;
 
         switch (specialization) {
-            case "Psychology":
-                specEnum = Specialization.Psychology;
+            case "Psicologia":
+                specEnum = Specialization.Psicologia;
                 break;
-            case "General Medicine":
-                specEnum = Specialization.GeneralMedicine;
+            case "MedicinaGeneral":
+                specEnum = Specialization.MedicinaGeneral;
                 break;
             default:
-                specEnum = Specialization.Dentistry;
+                specEnum = Specialization.Odontologia;
                 break;
         }
         List<Turn> turns = turnRepository.findBySpecializationAndDateAndStatus(
-                specEnum, LocalDate.now(), "Active");
+                specEnum, LocalDate.now(), "Activo");
 
         for (Turn turn : turns) {
-            turn.setStatus("Disabled");
+            turn.setStatus("Inhabilitado");
         }
 
         turnRepository.saveAll(turns);
@@ -111,51 +98,49 @@ public class TurnService {
         Specialization specEnum;
 
         switch (specialization) {
-            case "Psychology":
-                specEnum = Specialization.Psychology;
+            case "Psicologia":
+                specEnum = Specialization.Psicologia;
                 break;
-            case "General Medicine":
-                specEnum = Specialization.GeneralMedicine;
+            case "MedicinaGeneral":
+                specEnum = Specialization.MedicinaGeneral;
                 break;
             default:
-                specEnum = Specialization.Dentistry;
+                specEnum = Specialization.Odontologia;
                 break;
         }
 
-        // Marcar el turno actual como "Passed"
-        Optional<Turn> actualTurn = turnRepository.findFirstBySpecializationAndStatus(specEnum, "Attending");
+        Optional<Turn> actualTurn = turnRepository.findFirstBySpecializationAndStatus(specEnum, "En Atencion");
         actualTurn.ifPresent(turn -> {
-            turn.setStatus("Passed");
+            turn.setStatus("Atendido");
             turn.setFinalTime(LocalTime.now());
             turnRepository.save(turn);
         });
 
-        // Buscar siguiente turno prioritario
         Optional<Turn> turnoPrioritario = turnRepository
                 .findFirstBySpecializationAndDateAndPriorityIsTrueAndStatusOrderByInitialTimeAsc(
-                        specEnum, LocalDate.now(), "Active");
+                        specEnum, LocalDate.now(), "Activo");
 
         if (turnoPrioritario.isPresent()) {
             Turn turn = turnoPrioritario.get();
-            turn.setStatus("Attending");
+            turn.setStatus("En Atencion");
             turn.setAttendedTime(LocalTime.now());
             turnRepository.save(turn);
             return ;
         }
 
-        // Buscar siguiente turno normal
         Optional<Turn> turnoNormal = turnRepository
                 .findFirstBySpecializationAndDateAndPriorityIsFalseAndStatusOrderByInitialTimeAsc(
-                        specEnum, LocalDate.now(), "Active");
+                        specEnum, LocalDate.now(), "Activo");
 
         if (turnoNormal.isPresent()) {
             Turn turn = turnoNormal.get();
-            turn.setStatus("Attending");
+            turn.setStatus("En Atencion");
             turn.setAttendedTime(LocalTime.now());
             turnRepository.save(turn);
             return;
         }
 
+        throw new NoSuchElementException("No hay turnos disponibles para la especialidad: " + specEnum);
     }
 
 
@@ -163,56 +148,104 @@ public class TurnService {
         Specialization specEnum;
 
         switch (specialization) {
-            case "Psychology":
-                specEnum = Specialization.Psychology;
+            case "Psicologia":
+                specEnum = Specialization.Psicologia;
                 break;
-            case "General Medicine":
-                specEnum = Specialization.GeneralMedicine;
+            case "Medicina General":
+                specEnum = Specialization.MedicinaGeneral;
                 break;
             default:
-                specEnum = Specialization.Dentistry;
+                specEnum = Specialization.Odontologia;
                 break;
         }
 
         List<Turn> activeTurns = turnRepository.findBySpecializationAndDateAndStatus(
-                specEnum, LocalDate.now(), "Active");
+                specEnum, LocalDate.now(), "Activo");
 
         return activeTurns.stream()
                 .sorted(Comparator.comparing(Turn::getPriority).reversed()
                         .thenComparing(Turn::getInitialTime))
                 .toList();
     }
-    public Report generateReport(LocalDate from, LocalDate to, UserRol rolFilter) {
-        List<Turn> allTurns = turnRepository.findByDateBetween(from, to);
 
-        if (rolFilter != null) {
-            allTurns = allTurns.stream()
-                    .filter(t -> t.getRole() == rolFilter)
-                    .toList();
+    public Report generateReport(LocalDate from, LocalDate to, String rolFilter) {
+        System.out.println("Generando reporte desde " + from + " hasta " + to + ", filtro: " + rolFilter);
+
+        List<Turn> allTurns = turnRepository.findByDateBetween(from, to);
+        System.out.println("Total de turnos encontrados: " + allTurns.size());
+
+        if (allTurns.isEmpty()) {
+            System.out.println("No se encontraron turnos en el rango de fechas especificado");
+        }
+
+        if (rolFilter != null && !rolFilter.trim().isEmpty()) {
+            List<Turn> filteredTurns = allTurns.stream()
+                    .filter(t -> t.getRole() != null && rolFilter.equalsIgnoreCase(t.getRole().toString()))
+                    .collect(Collectors.toList());
+
+            System.out.println("Turnos después de filtrar por " + rolFilter + ": " + filteredTurns.size());
+            allTurns = filteredTurns;
         }
 
         int total = allTurns.size();
-        int completed = (int) allTurns.stream()
-                .filter(t -> "Passed".equalsIgnoreCase(t.getStatus()))
-                .count();
+
+        Map<String, Long> statusCounts = allTurns.stream()
+                .collect(Collectors.groupingBy(
+                        turn -> turn.getStatus() == null ? "NULL" : turn.getStatus().toString(),
+                        Collectors.counting()));
+
+        System.out.println("Estados encontrados en los turnos: " + statusCounts);
 
         List<Turn> completedTurns = allTurns.stream()
-                .filter(t -> "Passed".equalsIgnoreCase(t.getStatus()))
-                .toList();
+                .filter(t -> t.getStatus() != null && "Atendido".equalsIgnoreCase(t.getStatus().toString()))
+                .collect(Collectors.toList());
 
-        long totalWaitSeconds = completedTurns.stream()
-                .mapToLong(t -> Duration.between(t.getInitialTime(), t.getAttendedTime()).getSeconds())
-                .sum();
+        int completed = completedTurns.size();
+        System.out.println("Turnos completados: " + completed);
 
-        long totalAttentionSeconds = completedTurns.stream()
-                .mapToLong(t -> Duration.between(t.getAttendedTime(), t.getFinalTime()).getSeconds())
-                .sum();
+        long totalWaitSeconds = 0;
+        long totalAttentionSeconds = 0;
+        int validWaitTimeCount = 0;
+        int validAttentionTimeCount = 0;
 
-        LocalTime avgWait = totalWaitSeconds == 0 ? LocalTime.MIDNIGHT :
-                LocalTime.ofSecondOfDay(totalWaitSeconds / Math.max(completedTurns.size(), 1));
+        for (Turn turn : completedTurns) {
+            if (turn.getInitialTime() != null && turn.getAttendedTime() != null) {
+                try {
+                    long waitSeconds = Duration.between(turn.getInitialTime(), turn.getAttendedTime()).getSeconds();
+                    if (waitSeconds >= 0) {  // Evitar valores negativos
+                        totalWaitSeconds += waitSeconds;
+                        validWaitTimeCount++;
+                    } else {
+                        System.out.println("Tiempo de espera negativo detectado para turno ID: " + turn.getId());
+                    }
+                } catch (Exception e) {
+                    System.out.println("Error calculando tiempo de espera: " + e.getMessage());
+                }
+            }
 
-        LocalTime avgAttention = totalAttentionSeconds == 0 ? LocalTime.MIDNIGHT :
-                LocalTime.ofSecondOfDay(totalAttentionSeconds / Math.max(completedTurns.size(), 1));
+            if (turn.getAttendedTime() != null && turn.getFinalTime() != null) {
+                try {
+                    long attentionSeconds = Duration.between(turn.getAttendedTime(), turn.getFinalTime()).getSeconds();
+                    if (attentionSeconds >= 0) {  // Evitar valores negativos
+                        totalAttentionSeconds += attentionSeconds;
+                        validAttentionTimeCount++;
+                    } else {
+                        System.out.println("Tiempo de atención negativo detectado para turno ID: " + turn.getId());
+                    }
+                } catch (Exception e) {
+                    System.out.println("Error calculando tiempo de atención: " + e.getMessage());
+                }
+            }
+        }
+
+        System.out.println("Total de segundos de espera: " + totalWaitSeconds + " para " + validWaitTimeCount + " turnos");
+        System.out.println("Total de segundos de atención: " + totalAttentionSeconds + " para " + validAttentionTimeCount + " turnos");
+
+        LocalTime avgWait = validWaitTimeCount > 0 ?
+                LocalTime.ofSecondOfDay(totalWaitSeconds / validWaitTimeCount) : LocalTime.MIDNIGHT;
+
+        LocalTime avgAttention = validAttentionTimeCount > 0 ?
+                LocalTime.ofSecondOfDay(totalAttentionSeconds / validAttentionTimeCount) : LocalTime.MIDNIGHT;
 
         Report report = new Report();
         report.setActualDate(LocalDate.now());
@@ -230,47 +263,101 @@ public class TurnService {
     }
 
     private void setPercentages(Report report, List<Turn> all, List<Turn> completed) {
+        int totalTurns = all.size();
+        System.out.println("Calculando porcentajes para un total de " + totalTurns + " turnos");
+
+        if (totalTurns == 0) {
+            System.out.println("No hay turnos para calcular porcentajes");
+            return;
+        }
+
+        Set<UserRol> existingRoles = all.stream()
+                .map(Turn::getRole)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        System.out.println("Roles encontrados en los datos: " + existingRoles);
+
         Map<UserRol, Long> totalByRole = all.stream()
+                .filter(t -> t.getRole() != null)
                 .collect(Collectors.groupingBy(Turn::getRole, Collectors.counting()));
+
         Map<UserRol, Long> completedByRole = completed.stream()
-                .collect(Collectors.groupingBy(Turn::getRole, Collectors.counting()));
-        Map<UserRol, Long> priorityByRole = all.stream()
-                .filter(Turn::getPriority)
+                .filter(t -> t.getRole() != null)
                 .collect(Collectors.groupingBy(Turn::getRole, Collectors.counting()));
 
-        Map<Specialization, Long> totalBySpec = all.stream()
-                .collect(Collectors.groupingBy(Turn::getSpecialization, Collectors.counting()));
-        Map<Specialization, Long> completedBySpec = completed.stream()
-                .collect(Collectors.groupingBy(Turn::getSpecialization, Collectors.counting()));
+        List<String> discapacidades = List.of("MayorDeEdad", "DisfuncionMotriz", "Embarazo", "Otra", "NoTiene");
 
-        int total = all.size();
+        Set<String> existingDisabilities = all.stream()
+                .map(t -> t.getDisabilitie() == null ? "NULL" : t.getDisabilitie().toString())
+                .collect(Collectors.toSet());
 
-        report.setPercentStudents(percent(totalByRole.get(UserRol.Student), total));
-        report.setPercentStudentsCompleted(percent(completedByRole.get(UserRol.Student), total));
-        report.setPercentStudentsPriority(percent(priorityByRole.get(UserRol.Student), total));
+        System.out.println("Tipos de discapacidad encontrados: " + existingDisabilities);
 
-        report.setPercentTeachers(percent(totalByRole.get(UserRol.Teacher), total));
-        report.setPercentTeachersCompleted(percent(completedByRole.get(UserRol.Teacher), total));
-        report.setPercentTeachersPriority(percent(priorityByRole.get(UserRol.Teacher), total));
+        for (UserRol rol : UserRol.values()) {
+            long totalRol = totalByRole.getOrDefault(rol, 0L);
+            long completadosRol = completedByRole.getOrDefault(rol, 0L);
 
-        report.setPercentAdmins(percent(totalByRole.get(UserRol.Administrative), total));
-        report.setPercentAdminsCompleted(percent(completedByRole.get(UserRol.Administrative), total));
-        report.setPercentAdminsPriority(percent(priorityByRole.get(UserRol.Administrative), total));
+            System.out.println("Rol " + rol + ": " + totalRol + " turnos, " + completadosRol + " completados");
 
-        report.setPercentGeneralServices(percent(totalByRole.get(UserRol.GeneralServices), total));
-        report.setPercentGeneralServicesCompleted(percent(completedByRole.get(UserRol.GeneralServices), total));
-        report.setPercentGeneralServicesPriority(percent(priorityByRole.get(UserRol.GeneralServices), total));
+            double porcentajeRol = percent(totalRol, totalTurns);
+            double porcentajeCompletados = percent(completadosRol, totalTurns);
 
-        report.setPercentOdontology(percent(totalBySpec.get(Specialization.Dentistry), total));
-        report.setPercentOdontologyCompleted(percent(completedBySpec.get(Specialization.Dentistry), total));
-        report.setPercentMedicine(percent(totalBySpec.get(Specialization.GeneralMedicine), total));
-        report.setPercentMedicineCompleted(percent(completedBySpec.get(Specialization.GeneralMedicine), total));
-        report.setPercentPsychology(percent(totalBySpec.get(Specialization.Psychology), total));
-        report.setPercentPsychologyCompleted(percent(completedBySpec.get(Specialization.Psychology), total));
+            System.out.println("  % del total: " + porcentajeRol + "%, % completados: " + porcentajeCompletados + "%");
+
+            report.setTurnPercentageByRole(rol, porcentajeRol);
+            report.setCompletedPercentageByRole(rol, porcentajeCompletados);
+
+            if (totalRol == 0) {
+                continue;
+            }
+
+            for (String discapacidad : discapacidades) {
+                long count = all.stream()
+                        .filter(t -> t.getRole() == rol &&
+                                t.getDisabilitie() != null &&
+                                discapacidad.equalsIgnoreCase(t.getDisabilitie().toString()))
+                        .count();
+
+                double porcentajeDiscapacidad = percent(count, (int)totalRol);
+                System.out.println("  Discapacidad " + discapacidad + ": " + count + " turnos (" + porcentajeDiscapacidad + "%)");
+
+                report.addDisabilityPercentage(rol, discapacidad, porcentajeDiscapacidad);
+            }
+        }
     }
 
-    private int percent(Long value, int total) {
-        return value == null || total == 0 ? 0 : (int) ((value * 100) / total);
+    private double percent(Long part, int total) {
+        if (part == null || total == 0) {
+            return 0.0;
+        }
+        return (double) part * 100.0 / total;
     }
 
+
+    public Specialization[] getSpecializations(){return Specialization.values();}
+    public Disabilitie[] getDisabilities(){return Disabilitie.values();}
+
+    public Specialization getTurnSpecialization(String id) {
+        Optional<Turn> turn = turnRepository.findById(id);
+        return turn.map(Turn::getSpecialization).orElse(null);
+    }
+
+    public TurnDTO getTurnActualTurn(Specialization specialization) {
+        List<Turn> turns = turnRepository.findBySpecializationAndDateAndStatus(
+                specialization, LocalDate.now(), "En Atencion");
+
+        if (turns.isEmpty()) {
+            return null;
+        }
+        Turn actualTurn = turns.get(0);
+        return toDTO(actualTurn);
+    }
+    public TurnDTO toDTO(Turn turn) {    
+        TurnDTO turnDTO = new TurnDTO();
+        turnDTO.setCode(turn.getCode());
+        turnDTO.setUserName(turn.getPatient());
+        return turnDTO;
+    }
 }
+

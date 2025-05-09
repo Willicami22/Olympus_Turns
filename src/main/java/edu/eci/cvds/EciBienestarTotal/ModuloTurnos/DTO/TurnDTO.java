@@ -1,16 +1,19 @@
 package edu.eci.cvds.EciBienestarTotal.ModuloTurnos.DTO;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Enum.Disabilitie;
+import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Enum.Specialization;
+import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Enum.UserRol;
 
 public class TurnDTO {
     private String Code;
     private String userName;
     @JsonProperty("specialization")
-    private String specialization;
+    private Specialization specialization;
     private String state;
-    private boolean priority;
     private String identityDocument;
-    private String role;
+    private UserRol role;
+    private Disabilitie disabilitie;
 
     public TurnDTO() {}
     public String getCode() {
@@ -25,10 +28,10 @@ public class TurnDTO {
     public void setUserName(String userName) {
         this.userName = userName;
     }
-    public String getSpecialization() {
+    public Specialization getSpecialization() {
         return specialization;
     }
-    public void setSpecialization(String speciality) {
+    public void setSpecialization(Specialization speciality) {
         this.specialization = speciality;
     }
     public String getState() {
@@ -37,23 +40,19 @@ public class TurnDTO {
     public void setState(String state) {
         this.state = state;
     }
-    public boolean isPriority() {
-        return priority;
-    }
-    public void setPriority(boolean priority) {
-        this.priority = priority;
-    }
     public String getIdentityDocument() {
         return identityDocument;
     }
     public void setIdentityDocument(String identityDocument) {
         this.identityDocument = identityDocument;
     }
-    public String getRole() {
+    public UserRol getRole() {
         return role;
     }
-    public void setRole(String role) {
+    public void setRole(UserRol role) {
         this.role = role;
     }
+    public Disabilitie getDisabilitie(){ return this.disabilitie;}
+    public void setDisabilitie(Disabilitie disabilitie){this.disabilitie = disabilitie;}
 
 }

@@ -15,4 +15,5 @@ public interface TurnRepository extends MongoRepository<Turn, String> {
     Optional<Turn> findFirstBySpecializationAndDateAndPriorityIsFalseAndStatusOrderByInitialTimeAsc(Specialization specEnum, LocalDate now, String active);
     Optional<Turn> findFirstBySpecializationAndStatus(Specialization specEnum, String attending);
     List<Turn> findByDateBetween(LocalDate from, LocalDate to);
+    Optional<Turn> findById(String id);
 }

@@ -1,44 +1,58 @@
 package edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Entitie;
 
-import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Enum.Specialization;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Enum.UserRol;
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.HashMap;
+import java.util.Map;
 
 @Document(collection = "Report")
+@Schema(description = "Entidad que representa un reporte de turnos")
 public class Report {
-    @Id
-    private String id;
-    private LocalDate ActualDate;
-    private LocalTime ActualTime;
-    private LocalDate initialDate;
-    private LocalDate finalDate;
-    private int totalTurns;
-    private int turnsCompleted;
-    private LocalTime AvarageWaitingTime;
-    private LocalTime AverageTimeAttention;
-    private int percentStudents;
-    private int percentStudentsCompleted;
-    private int percentStudentsPriority;
-    private int percentTeachers;
-    private int percentTeachersCompleted;
-    private int percentTeachersPriority;
-    private int percentAdmins;
-    private int percentAdminsCompleted;
-    private int percentAdminsPriority;
-    private int percentGeneralServices;
-    private int percentGeneralServicesCompleted;
-    private int percentGeneralServicesPriority;
-    private int percentOdontology;
-    private int percentOdontologyCompleted;
-    private int percentMedicine;
-    private int percentMedicineCompleted;
-    private int percentPsychology;
-    private int percentPsychologyCompleted;
 
+    @Id
+    @Schema(description = "Identificador único del reporte", example = "663c9f5d98a432000a4e567d")
+    private String id;
+
+    @Schema(description = "Fecha en que se generó el reporte", example = "2025-05-08")
+    private LocalDate ActualDate;
+
+    @Schema(description = "Hora en que se generó el reporte", example = "15:30:45")
+    private LocalTime ActualTime;
+
+    @Schema(description = "Fecha inicial del rango del reporte", example = "2025-05-01")
+    private LocalDate initialDate;
+
+    @Schema(description = "Fecha final del rango del reporte", example = "2025-05-07")
+    private LocalDate finalDate;
+
+    @Schema(description = "Rol de usuario aplicado como filtro (si aplica)")
+    private UserRol userRole;
+
+    @Schema(description = "Cantidad total de turnos en el rango especificado", example = "50")
+    private int totalTurns;
+
+    @Schema(description = "Cantidad de turnos completados en el rango", example = "45")
+    private int turnsCompleted;
+
+    @Schema(description = "Tiempo promedio de espera", example = "00:10:30")
+    private LocalTime AvarageWaitingTime;
+
+    @Schema(description = "Tiempo promedio de atención", example = "00:12:45")
+    private LocalTime AverageTimeAttention;
+
+    @Schema(description = "Porcentaje de turnos por rol")
+    private Map<UserRol, Double> turnPercentageByRole = new HashMap<>();
+
+    @Schema(description = "Porcentaje de turnos completados por rol")
+    private Map<UserRol, Double> completedPercentageByRole = new HashMap<>();
+
+    @Schema(description = "Porcentajes de discapacidades por rol")
+    private Map<UserRol, Map<String, Double>> disabilityPercentagesByRole = new HashMap<>();
 
     public String getId() {
         return id;
@@ -70,6 +84,12 @@ public class Report {
     public void setFinalDate(LocalDate finalDate) {
         this.finalDate = finalDate;
     }
+    public UserRol getUserRole() {
+        return userRole;
+    }
+    public void setUserRole(UserRol userRole) {
+        this.userRole = userRole;
+    }
     public int getTotalTurns() {
         return totalTurns;
     }
@@ -91,41 +111,34 @@ public class Report {
     public LocalTime getAverageTimeAttention() {
         return AverageTimeAttention;
     }
-    public void setAverageTimeAttention(LocalTime AverageTimeAttention) {this.AverageTimeAttention = AverageTimeAttention;}
-    public int getPercentAdmins() {return percentAdmins;    }
-    public void setPercentAdmins(int percentAdmins) {this.percentAdmins = percentAdmins;    }
-    public int getPercentAdminsCompleted() {return percentAdminsCompleted;}
-    public void setPercentAdminsCompleted(int percentAdminsCompleted) {this.percentAdminsCompleted = percentAdminsCompleted;}
-    public int getPercentGeneralServices() {return percentGeneralServices;}
-    public void setPercentGeneralServices(int percentGeneralServices) {this.percentGeneralServices = percentGeneralServices;}
-    public int getPercentGeneralServicesCompleted() {return percentGeneralServicesCompleted;}
-    public void setPercentGeneralServicesCompleted(int percentGeneralServicesCompleted) {this.percentGeneralServicesCompleted = percentGeneralServicesCompleted;}
-    public int getPercentTeachers() {return percentTeachers;}
-    public void setPercentTeachers(int percentTeachers) {this.percentTeachers = percentTeachers;}
-    public int getPercentTeachersCompleted() {return percentTeachersCompleted;}
-    public void setPercentTeachersCompleted(int percentTeachersCompleted) {this.percentTeachersCompleted = percentTeachersCompleted;}
-    public int getPercentStudents() {return percentStudents;}
-    public void setPercentStudents(int percentStudents) {this.percentStudents = percentStudents;}
-    public int getPercentStudentsCompleted() {return percentStudentsCompleted;  }
-    public void setPercentStudentsCompleted(int percentStudentsCompleted) {this.percentStudentsCompleted = percentStudentsCompleted;}
-    public int getPercentMedicineCompleted() {return percentMedicineCompleted;}
-    public void setPercentMedicineCompleted(int percentMedicineCompleted) {this.percentMedicineCompleted = percentMedicineCompleted;}
-    public int getPercentPsychologyCompleted() {return percentPsychologyCompleted;}
-    public void setPercentPsychologyCompleted(int percentPsychologyCompleted) {this.percentPsychologyCompleted = percentPsychologyCompleted;}
-    public int getPercentOdontology() {return percentOdontology;}
-    public int getPercentOdontologyCompleted() {return percentOdontologyCompleted;}
-    public int getPercentPsychology() {return percentPsychology;}
-    public void setPercentPsychology(int percentPsychology) {this.percentPsychology = percentPsychology;}
-    public void setPercentMedicine(int percentMedicine) {this.percentMedicine = percentMedicine;}
-    public int getPercentMedicine() {return percentMedicine;}
-    public void setPercentOdontology(int percentOdontology) {this.percentOdontology = percentOdontology;}
-    public void setPercentOdontologyCompleted(int percentOdontologyCompleted) {this.percentOdontologyCompleted = percentOdontologyCompleted;   }
-    public int getPercentAdminsPriority() {return percentAdminsPriority;}
-    public int getPercentGeneralServicesPriority() {return percentGeneralServicesPriority;}
-    public int getPercentStudentsPriority() {return percentStudentsPriority;}
-    public void setPercentStudentsPriority(int percentStudentsPriority) {this.percentStudentsPriority = percentStudentsPriority;}
-    public int getPercentTeachersPriority() {return percentTeachersPriority;}
-    public void setPercentTeachersPriority(int percentTeachersPriority) {this.percentTeachersPriority = percentTeachersPriority;}
-    public void setPercentAdminsPriority(int percentAdminsPriority) {this.percentAdminsPriority = percentAdminsPriority;}
-    public void setPercentGeneralServicesPriority(int percentGeneralServicesPriority) {this.percentGeneralServicesPriority = percentGeneralServicesPriority;}
+    public void setAverageTimeAttention(LocalTime AverageTimeAttention) {
+        this.AverageTimeAttention = AverageTimeAttention;
+    }
+    public Map<UserRol, Double> getTurnPercentageByRole() {
+        return turnPercentageByRole;
+    }
+
+    public void setTurnPercentageByRole(UserRol role, double percentage) {
+        turnPercentageByRole.put(role, percentage);
+    }
+
+    public Map<UserRol, Double> getCompletedPercentageByRole() {
+        return completedPercentageByRole;
+    }
+
+    public void setCompletedPercentageByRole(UserRol role, double percentage) {
+        completedPercentageByRole.put(role, percentage);
+    }
+
+    public Map<UserRol, Map<String, Double>> getDisabilityPercentagesByRole() {
+        return disabilityPercentagesByRole;
+    }
+
+    public void addDisabilityPercentage(UserRol role, String disability, double percentage) {
+        disabilityPercentagesByRole
+                .computeIfAbsent(role, k -> new HashMap<>())
+                .put(disability, percentage);
+    }
 }
+
+

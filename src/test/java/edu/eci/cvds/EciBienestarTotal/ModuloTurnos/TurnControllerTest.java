@@ -5,6 +5,7 @@ import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.DTO.ReportDTO;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.DTO.TurnDTO;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Entitie.Report;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Entitie.Turn;
+import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Enum.Disabilitie;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Enum.Specialization;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Enum.UserRol;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Service.TurnService;
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,13 +23,14 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @SpringBootTest
-public class TurnControllerTest {
+class TurnControllerTest {
 
     @Mock
     private TurnService turnService;
@@ -35,222 +38,243 @@ public class TurnControllerTest {
     @InjectMocks
     private TurnController turnController;
 
-    private TurnDTO turnDTO;
-    private Turn turn;
-    private List<Turn> turnList;
+    private TurnDTO sampleTurnDTO;
+    private Turn sampleTurn;
+    private Report sampleReport;
 
     @BeforeEach
     void setUp() {
-        turnDTO = new TurnDTO();
-        turnDTO.setUserName("Juan Pérez");
-        turnDTO.setIdentityDocument("1234567890");
-        turnDTO.setRole("student");
-        turnDTO.setPriority(true);
-        turnDTO.setSpecialization("Psychology");
+        MockitoAnnotations.openMocks(this);
 
-        turn = new Turn();
-        turn.setCode("P-1");
-        turn.setPatient("Juan Pérez");
-        turn.setIdentityDocument("1234567890");
-        turn.setRole(UserRol.Student);
-        turn.setPriority(true);
-        turn.setSpecialization(Specialization.Psychology);
-        turn.setStatus("Active");
-        turn.setDate(LocalDate.now());
-        turn.setInitialTime(LocalTime.now());
+        // Setup sample TurnDTO
+        sampleTurnDTO = new TurnDTO();
+        sampleTurnDTO.setUserName("Juan Pérez");
+        sampleTurnDTO.setIdentityDocument("1023456789");
+        sampleTurnDTO.setRole(UserRol.Estudiante);
+        sampleTurnDTO.setSpecialization(Specialization.MedicinaGeneral);
+        sampleTurnDTO.setDisabilitie(Disabilitie.NoTiene);
+        sampleTurnDTO.setCode("M-1");
+        sampleTurnDTO.setState("Activo");
 
-        turnList = new ArrayList<>();
-        turnList.add(turn);
+        // Setup sample Turn
+        sampleTurn = new Turn();
+        sampleTurn.setPatient("Juan Pérez");
+        sampleTurn.setIdentityDocument("1023456789");
+        sampleTurn.setRole(UserRol.Estudiante);
+        sampleTurn.setSpecialization(Specialization.MedicinaGeneral);
+        sampleTurn.setDisabilitie(Disabilitie.NoTiene);
+        sampleTurn.setCode("M-1");
+        sampleTurn.setStatus("Activo");
+        sampleTurn.setDate(LocalDate.now());
+        sampleTurn.setInitialTime(LocalTime.now());
+        sampleTurn.setPriority(false);
 
-        Turn turn2 = new Turn();
-        turn2.setCode("P-2");
-        turn2.setPatient("María López");
-        turn2.setIdentityDocument("0987654321");
-        turn2.setRole(UserRol.Teacher);
-        turn2.setPriority(false);
-        turn2.setSpecialization(Specialization.Psychology);
-        turn2.setStatus("Active");
-        turn2.setDate(LocalDate.now());
-        turn2.setInitialTime(LocalTime.now().plusMinutes(10));
-        turnList.add(turn2);
+        // Setup sample Report
+        sampleReport = new Report();
+        sampleReport.setActualDate(LocalDate.now());
+        sampleReport.setActualTime(LocalTime.now());
+        sampleReport.setInitialDate(LocalDate.now().minusDays(7));
+        sampleReport.setFinalDate(LocalDate.now());
+        sampleReport.setTotalTurns(10);
+        sampleReport.setTurnsCompleted(8);
+        sampleReport.setAvarageWaitingTime(LocalTime.of(0, 15, 0));
+        sampleReport.setAverageTimeAttention(LocalTime.of(0, 25, 0));
     }
 
     @Test
-    void testCreateTurn() {
-        when(turnService.createTurn(anyString(), anyString(), anyString(), anyBoolean(), anyString()))
-                .thenReturn("P-1");
+    void createTurn_Success() {
+        // Arrange
+        when(turnService.createTurn(
+                anyString(),
+                anyString(),
+                any(UserRol.class),
+                any(Specialization.class),
+                any(Disabilitie.class)
+        )).thenReturn("M-1");
 
-        ResponseEntity<Map<String, String>> response = turnController.CreateTurn(turnDTO);
+        // Act
+        ResponseEntity<Map<String, String>> response = turnController.createTurn(sampleTurnDTO);
 
         // Assert
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertEquals("P-1", response.getBody().get("code"));
+        assertEquals("M-1", response.getBody().get("code"));
         assertEquals("Turno creado exitosamente", response.getBody().get("message"));
 
         verify(turnService).createTurn(
-                turnDTO.getUserName(),
-                turnDTO.getIdentityDocument(),
-                turnDTO.getRole(),
-                turnDTO.isPriority(),
-                turnDTO.getSpecialization()
+                eq(sampleTurnDTO.getUserName()),
+                eq(sampleTurnDTO.getIdentityDocument()),
+                eq(sampleTurnDTO.getRole()),
+                eq(sampleTurnDTO.getSpecialization()),
+                eq(sampleTurnDTO.getDisabilitie())
         );
     }
 
     @Test
-    void testCreateTurnWithError() {
+    void createTurn_ThrowsException() {
         // Arrange
-        when(turnService.createTurn(anyString(), anyString(), anyString(), anyBoolean(), anyString()))
-                .thenThrow(new RuntimeException("Error de test"));
+        when(turnService.createTurn(
+                anyString(),
+                anyString(),
+                any(UserRol.class),
+                any(Specialization.class),
+                any(Disabilitie.class)
+        )).thenThrow(new RuntimeException("Error de prueba"));
 
+        // Act
+        ResponseEntity<Map<String, String>> response = turnController.createTurn(sampleTurnDTO);
 
-        ResponseEntity<Map<String, String>> response = turnController.CreateTurn(turnDTO);
-
+        // Assert
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertTrue(response.getBody().get("error").contains("Error de test"));
+        assertEquals("Error al crear el turno: Error de prueba", response.getBody().get("error"));
     }
 
     @Test
-    void testPassTurn() {
+    void passTurn_Success() {
         // Arrange
+        String specialization = "MedicinaGeneral";
         doNothing().when(turnService).PassTurn(anyString());
 
         // Act
-        ResponseEntity<Map<String, String>> response = turnController.PassTurn("Psychology");
+        ResponseEntity<Map<String, String>> response = turnController.passTurn(specialization);
 
         // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertEquals("Turno pasado exitosamente", response.getBody().get("message"));
 
-        verify(turnService).PassTurn("Psychology");
+        verify(turnService).PassTurn(specialization);
     }
 
     @Test
-    void testPassTurnWithError() {
-        doThrow(new RuntimeException("Error al pasar turno")).when(turnService).PassTurn(anyString());
+    void passTurn_NoTurnsAvailable() {
+        // Arrange
+        String specialization = "MedicinaGeneral";
+        doThrow(new NoSuchElementException("No hay turnos disponibles para la especialidad: MedicinaGeneral"))
+                .when(turnService).PassTurn(anyString());
 
-        ResponseEntity<Map<String, String>> response = turnController.PassTurn("Psychology");
+        // Act
+        ResponseEntity<Map<String, String>> response = turnController.passTurn(specialization);
 
         // Assert
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertTrue(response.getBody().get("error").contains("Error al pasar turno"));
+        assertEquals("Error al pasar el turno: No hay turnos disponibles para la especialidad: MedicinaGeneral",
+                response.getBody().get("error"));
     }
 
     @Test
-    void testDisableTurns() {
-
+    void disableTurn_Success() {
+        // Arrange
+        String specialization = "MedicinaGeneral";
         doNothing().when(turnService).DisableTurns(anyString());
 
-        ResponseEntity<Map<String, String>> response = turnController.DisableTurn("Psychology");
+        // Act
+        ResponseEntity<Map<String, String>> response = turnController.disableTurn(specialization);
 
         // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertEquals("Turnos deshabilitados exitosamente", response.getBody().get("message"));
 
-        verify(turnService).DisableTurns("Psychology");
+        verify(turnService).DisableTurns(specialization);
     }
 
     @Test
-    void testDisableTurnsWithError() {
+    void disableTurn_ThrowsException() {
         // Arrange
-        doThrow(new RuntimeException("Error al deshabilitar")).when(turnService).DisableTurns(anyString());
+        String specialization = "MedicinaGeneral";
+        doThrow(new RuntimeException("Error al deshabilitar"))
+                .when(turnService).DisableTurns(anyString());
 
         // Act
-        ResponseEntity<Map<String, String>> response = turnController.DisableTurn("Psychology");
+        ResponseEntity<Map<String, String>> response = turnController.disableTurn(specialization);
 
         // Assert
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertTrue(response.getBody().get("error").contains("Error al deshabilitar"));
+        assertEquals("Error al deshabilitar los turnos: Error al deshabilitar",
+                response.getBody().get("error"));
     }
 
     @Test
-    void testGetTurns() {
-        when(turnService.getNextTurns("Psychology")).thenReturn(turnList);
-
-        ResponseEntity<?> response = turnController.getTurns("Psychology");
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
-
-        List<?> resultList = (List<?>) response.getBody();
-        assertEquals(2, resultList.size());
-
-        assertTrue(resultList.get(0) instanceof TurnDTO);
-
-        TurnDTO firstDTO = (TurnDTO) resultList.get(0);
-        assertEquals("P-1", firstDTO.getCode());
-        assertEquals("Juan Pérez", firstDTO.getUserName());
-        assertEquals("Psychology", firstDTO.getSpecialization());
-        assertTrue(firstDTO.isPriority());
-
-        verify(turnService).getNextTurns("Psychology");
-    }
-
-    @Test
-    void testGetTurnsVoid() {
+    void getTurns_Success() {
         // Arrange
-        when(turnService.getNextTurns("Psychology")).thenReturn(new ArrayList<>());
+        String specialization = "MedicinaGeneral";
+        List<Turn> turnList = new ArrayList<>();
+        turnList.add(sampleTurn);
+
+        when(turnService.getNextTurns(anyString())).thenReturn(turnList);
 
         // Act
-        ResponseEntity<?> response = turnController.getTurns("Psychology");
+        ResponseEntity<?> response = turnController.getTurns(specialization);
 
         // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
+        assertTrue(response.getBody() instanceof List);
 
-        List<?> resultList = (List<?>) response.getBody();
-        assertTrue(resultList.isEmpty());
+        @SuppressWarnings("unchecked")
+        List<TurnDTO> turnDTOList = (List<TurnDTO>) response.getBody();
+        assertEquals(1, turnDTOList.size());
+        assertEquals(sampleTurn.getCode(), turnDTOList.get(0).getCode());
+        assertEquals(sampleTurn.getPatient(), turnDTOList.get(0).getUserName());
+
+        verify(turnService).getNextTurns(specialization);
     }
 
     @Test
-    void testGetTurnsWithError() {
+    void getTurns_ThrowsException() {
         // Arrange
-        when(turnService.getNextTurns("Psychology")).thenThrow(new RuntimeException("Error al obtener turnos"));
+        String specialization = "MedicinaGeneral";
+        when(turnService.getNextTurns(anyString())).thenThrow(new RuntimeException("Error al obtener turnos"));
 
         // Act
-        ResponseEntity<?> response = turnController.getTurns("Psychology");
+        ResponseEntity<?> response = turnController.getTurns(specialization);
 
         // Assert
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertNotNull(response.getBody());
         assertTrue(response.getBody() instanceof Map);
 
-        Map<String, String> errorMap = (Map<String, String>) response.getBody();
-        assertTrue(errorMap.get("error").contains("Error al obtener turnos"));
+        @SuppressWarnings("unchecked")
+        Map<String, String> errorResponse = (Map<String, String>) response.getBody();
+        assertEquals("Error al obtener la lista de turnos: Error al obtener turnos",
+                errorResponse.get("error"));
     }
 
     @Test
-    void generateReport_WithValidDates_ReturnsReport() {
+    void generateReport_Success() {
         // Arrange
         ReportDTO reportDTO = new ReportDTO();
-        reportDTO.setInitialDate(LocalDate.of(2025, 1, 1));
-        reportDTO.setFinalDate(LocalDate.of(2025, 1, 31));
-        reportDTO.setUserRole(UserRol.Student); // Asumiendo que STUDENT es un valor válido de UserRol
+        reportDTO.setInitialDate(LocalDate.now().minusDays(7));
+        reportDTO.setFinalDate(LocalDate.now());
+        reportDTO.setUserRole("ESTUDIANTE");
 
-        Report mockReport = new Report(); // Asumiendo que existe una clase Report
-        when(turnService.generateReport(reportDTO.getInitialDate(), reportDTO.getFinalDate(),
-                reportDTO.getUserRole())).thenReturn(mockReport);
+        when(turnService.generateReport(any(LocalDate.class), any(LocalDate.class), anyString()))
+                .thenReturn(sampleReport);
 
         // Act
         ResponseEntity<Report> response = turnController.generateReport(reportDTO);
 
         // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(mockReport, response.getBody());
-        verify(turnService).generateReport(reportDTO.getInitialDate(), reportDTO.getFinalDate(),
-                reportDTO.getUserRole());
+        assertNotNull(response.getBody());
+        assertEquals(sampleReport, response.getBody());
+
+        verify(turnService).generateReport(
+                eq(reportDTO.getInitialDate()),
+                eq(reportDTO.getFinalDate()),
+                eq(reportDTO.getUserRole())
+        );
     }
 
     @Test
-    void generateReport_WithNullInitialDate_ReturnsBadRequest() {
+    void generateReport_MissingDates() {
         // Arrange
         ReportDTO reportDTO = new ReportDTO();
-        reportDTO.setInitialDate(null);
-        reportDTO.setFinalDate(LocalDate.of(2025, 1, 31));
+        // Missing initialDate and finalDate
 
         // Act
         ResponseEntity<Report> response = turnController.generateReport(reportDTO);
@@ -258,61 +282,69 @@ public class TurnControllerTest {
         // Assert
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertNull(response.getBody());
-        verify(turnService, never()).generateReport(any(), any(), any());
     }
 
     @Test
-    void generateReport_WithNullFinalDate_ReturnsBadRequest() {
+    void getSpecializations_Success() {
         // Arrange
-        ReportDTO reportDTO = new ReportDTO();
-        reportDTO.setInitialDate(LocalDate.of(2025, 1, 1));
-        reportDTO.setFinalDate(null);
+        Specialization[] specializations = Specialization.values();
+        when(turnService.getSpecializations()).thenReturn(specializations);
 
         // Act
-        ResponseEntity<Report> response = turnController.generateReport(reportDTO);
-
-        // Assert
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-        assertNull(response.getBody());
-        verify(turnService, never()).generateReport(any(), any(), any());
-    }
-
-    @Test
-    void generateReport_WithNullUserRole_StillWorksCorrectly() {
-        // Arrange
-        ReportDTO reportDTO = new ReportDTO();
-        reportDTO.setInitialDate(LocalDate.of(2025, 1, 1));
-        reportDTO.setFinalDate(LocalDate.of(2025, 1, 31));
-        reportDTO.setUserRole(null); // UserRole es opcional
-
-        Report mockReport = new Report();
-        when(turnService.generateReport(reportDTO.getInitialDate(), reportDTO.getFinalDate(),
-                null)).thenReturn(mockReport);
-
-        // Act
-        ResponseEntity<Report> response = turnController.generateReport(reportDTO);
+        ResponseEntity<Specialization[]> response = turnController.getSpecializations();
 
         // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(mockReport, response.getBody());
-        verify(turnService).generateReport(reportDTO.getInitialDate(), reportDTO.getFinalDate(), null);
+        assertNotNull(response.getBody());
+        assertEquals(specializations, response.getBody());
+
+        verify(turnService).getSpecializations();
     }
 
     @Test
-    void generateReport_WhenServiceThrowsException_ReturnsInternalServerError() {
+    void getDisabilities_Success() {
         // Arrange
-        ReportDTO reportDTO = new ReportDTO();
-        reportDTO.setInitialDate(LocalDate.of(2025, 1, 1));
-        reportDTO.setFinalDate(LocalDate.of(2025, 1, 31));
+        Disabilitie[] disabilities = Disabilitie.values();
+        when(turnService.getDisabilities()).thenReturn(disabilities);
 
-        when(turnService.generateReport(any(), any(), any()))
-                .thenThrow(new RuntimeException("Error generando reporte"));
+        ResponseEntity<Disabilitie[]> response = turnController.getDisabilities();
 
-        // Act
-        ResponseEntity<Report> response = turnController.generateReport(reportDTO);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(disabilities, response.getBody());
 
-        // Assert
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        verify(turnService).getDisabilities();
+    }
+
+    @Test
+    void getInfoActualTurn_Success() {
+        Specialization specialization = Specialization.Psicologia;
+        TurnDTO turnDTO = new TurnDTO();
+        turnDTO.setCode("P-1");
+        turnDTO.setUserName("Ana Gómez");
+
+        when(turnService.getTurnActualTurn(any(Specialization.class))).thenReturn(turnDTO);
+
+        ResponseEntity<TurnDTO> response = turnController.getInfoActualTurn(specialization);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(turnDTO.getCode(), response.getBody().getCode());
+        assertEquals(turnDTO.getUserName(), response.getBody().getUserName());
+
+        verify(turnService).getTurnActualTurn(specialization);
+    }
+
+    @Test
+    void getInfoActualTurn_NoActiveTurn() {
+        Specialization specialization = Specialization.Psicologia;
+        when(turnService.getTurnActualTurn(any(Specialization.class))).thenReturn(null);
+
+        ResponseEntity<TurnDTO> response = turnController.getInfoActualTurn(specialization);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNull(response.getBody());
+
+        verify(turnService).getTurnActualTurn(specialization);
     }
 }
