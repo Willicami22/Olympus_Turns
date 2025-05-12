@@ -402,7 +402,7 @@ public class TurnServiceTest {
         TurnDTO result2 = turnService.getTurnActualTurn(Specialization.MedicinaGeneral);
 
         // Assert
-        assertNotNull(result1);
+        assertNotNull(result1); 
         assertEquals("P-1", result1.getCode());
         assertEquals("Test Patient", result1.getUserName());
 
