@@ -151,7 +151,7 @@ public class TurnService {
             case "Psicologia":
                 specEnum = Specialization.Psicologia;
                 break;
-            case "Medicina General":
+            case "MedicinaGeneral":
                 specEnum = Specialization.MedicinaGeneral;
                 break;
             default:
