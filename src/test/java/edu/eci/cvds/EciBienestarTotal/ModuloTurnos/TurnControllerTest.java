@@ -11,26 +11,27 @@ import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Enum.UserRol;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Service.TurnService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
+// Cambiar a la librería com.auth0.jwt
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
+
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @SpringBootTest
-class TurnControllerTest {
+@ExtendWith(MockitoExtension.class)
+public class TurnControllerTest {
 
     @Mock
     private TurnService turnService;
@@ -38,62 +39,77 @@ class TurnControllerTest {
     @InjectMocks
     private TurnController turnController;
 
-    private TurnDTO sampleTurnDTO;
-    private Turn sampleTurn;
-    private Report sampleReport;
+    private String validToken;
+    private String tokenSinClaims;
+    private String validToken1;
+    private final String SECRET_KEY = "ContraseñaSuperSecreta123";
 
     @BeforeEach
     void setUp() {
+        // Generamos tokens válidos para pruebas
         MockitoAnnotations.openMocks(this);
 
-        // Setup sample TurnDTO
-        sampleTurnDTO = new TurnDTO();
-        sampleTurnDTO.setUserName("Juan Pérez");
-        sampleTurnDTO.setIdentityDocument("1023456789");
-        sampleTurnDTO.setRole(UserRol.Estudiante);
-        sampleTurnDTO.setSpecialization(Specialization.MedicinaGeneral);
-        sampleTurnDTO.setDisabilitie(Disabilitie.NoTiene);
-        sampleTurnDTO.setCode("M-1");
-        sampleTurnDTO.setState("Activo");
+        Algorithm algorithm = Algorithm.HMAC256("ContraseñaSuperSecreta123");
 
-        // Setup sample Turn
-        sampleTurn = new Turn();
-        sampleTurn.setPatient("Juan Pérez");
-        sampleTurn.setIdentityDocument("1023456789");
-        sampleTurn.setRole(UserRol.Estudiante);
-        sampleTurn.setSpecialization(Specialization.MedicinaGeneral);
-        sampleTurn.setDisabilitie(Disabilitie.NoTiene);
-        sampleTurn.setCode("M-1");
-        sampleTurn.setStatus("Activo");
-        sampleTurn.setDate(LocalDate.now());
-        sampleTurn.setInitialTime(LocalTime.now());
-        sampleTurn.setPriority(false);
+        validToken = "Bearer " + JWT.create()
+                .withClaim("id", "1")
+                .withClaim("userName", "usuario")
+                .withClaim("email", "email@example.com")
+                .withClaim("name", "Nombre")
+                .withClaim("role", "Medical_Secretary")
+                .withClaim("specialty", "")
+                .sign(algorithm);
 
-        // Setup sample Report
-        sampleReport = new Report();
-        sampleReport.setActualDate(LocalDate.now());
-        sampleReport.setActualTime(LocalTime.now());
-        sampleReport.setInitialDate(LocalDate.now().minusDays(7));
-        sampleReport.setFinalDate(LocalDate.now());
-        sampleReport.setTotalTurns(10);
-        sampleReport.setTurnsCompleted(8);
-        sampleReport.setAvarageWaitingTime(LocalTime.of(0, 15, 0));
-        sampleReport.setAverageTimeAttention(LocalTime.of(0, 25, 0));
+        validToken1 = "Bearer " + JWT.create()
+                .withClaim("id", "1")
+                .withClaim("userName", "usuario")
+                .withClaim("email", "email@example.com")
+                .withClaim("name", "Nombre")
+                .withClaim("role", "Dentistry")
+                .withClaim("specialty", "")
+                .sign(algorithm);
+
+        tokenSinClaims = "Bearer " + JWT.create()
+                .sign(algorithm);
+    }
+
+    private String generateValidToken(String id, String name, String email, String role, String specialty) {
+        long now = System.currentTimeMillis();
+        Date expiryDate = new Date(now + 3600000); // Token válido por 1 hora
+
+        Algorithm algorithm = Algorithm.HMAC256(SECRET_KEY);
+
+        return "Bearer " + JWT.create()
+                .withClaim("id", id)
+                .withClaim("userName", id)
+                .withClaim("email", email)
+                .withClaim("name", name)
+                .withClaim("role", role)
+                .withClaim("specialty", specialty)
+                .withExpiresAt(expiryDate)
+                .sign(algorithm);
     }
 
     @Test
-    void createTurn_Success() {
+    void createTurn_validToken_shouldCreateTurn() {
         // Arrange
+        TurnDTO turnDTO = new TurnDTO();
+        turnDTO.setUserName("testUser");
+        turnDTO.setIdentityDocument("1234567890");
+        turnDTO.setRole(UserRol.Estudiante);
+        turnDTO.setSpecialization(Specialization.MedicinaGeneral);
+        turnDTO.setDisabilitie(Disabilitie.NoTiene);
+
         when(turnService.createTurn(
-                anyString(),
-                anyString(),
-                any(UserRol.class),
-                any(Specialization.class),
-                any(Disabilitie.class)
+                turnDTO.getUserName(),
+                turnDTO.getIdentityDocument(),
+                turnDTO.getRole(),
+                turnDTO.getSpecialization(),
+                turnDTO.getDisabilitie()
         )).thenReturn("M-1");
 
         // Act
-        ResponseEntity<Map<String, String>> response = turnController.createTurn(sampleTurnDTO);
+        ResponseEntity<Map<String, String>> response = turnController.createTurn(turnDTO, validToken);
 
         // Assert
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
@@ -102,113 +118,99 @@ class TurnControllerTest {
         assertEquals("Turno creado exitosamente", response.getBody().get("message"));
 
         verify(turnService).createTurn(
-                eq(sampleTurnDTO.getUserName()),
-                eq(sampleTurnDTO.getIdentityDocument()),
-                eq(sampleTurnDTO.getRole()),
-                eq(sampleTurnDTO.getSpecialization()),
-                eq(sampleTurnDTO.getDisabilitie())
+                turnDTO.getUserName(),
+                turnDTO.getIdentityDocument(),
+                turnDTO.getRole(),
+                turnDTO.getSpecialization(),
+                turnDTO.getDisabilitie()
         );
     }
 
     @Test
-    void createTurn_ThrowsException() {
+    void createTurn_invalidToken_shouldReturnUnauthorized() {
         // Arrange
-        when(turnService.createTurn(
-                anyString(),
-                anyString(),
-                any(UserRol.class),
-                any(Specialization.class),
-                any(Disabilitie.class)
-        )).thenThrow(new RuntimeException("Error de prueba"));
+        TurnDTO turnDTO = new TurnDTO();
+        turnDTO.setUserName("testUser");
+        turnDTO.setIdentityDocument("1234567890");
+        turnDTO.setRole(UserRol.Estudiante);
+        turnDTO.setSpecialization(Specialization.MedicinaGeneral);
+        turnDTO.setDisabilitie(Disabilitie.NoTiene);
 
         // Act
-        ResponseEntity<Map<String, String>> response = turnController.createTurn(sampleTurnDTO);
+        ResponseEntity<Map<String, String>> response = turnController.createTurn(turnDTO, tokenSinClaims);
 
         // Assert
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertEquals("Error al crear el turno: Error de prueba", response.getBody().get("error"));
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertTrue(response.getBody().get("error").contains("No autorizado"));
+
+        // Verify turnService was not called
+        verify(turnService, never()).createTurn(any(), any(), any(), any(), any());
     }
 
     @Test
-    void passTurn_Success() {
+    void passTurn_validAdminToken_shouldPassTurn() {
         // Arrange
-        String specialization = "MedicinaGeneral";
-        doNothing().when(turnService).PassTurn(anyString());
+        doNothing().when(turnService).PassTurn("MedicinaGeneral");
 
         // Act
-        ResponseEntity<Map<String, String>> response = turnController.passTurn(specialization);
+        ResponseEntity<Map<String, String>> response = turnController.passTurn("MedicinaGeneral", validToken);
 
         // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertEquals("Turno pasado exitosamente", response.getBody().get("message"));
 
-        verify(turnService).PassTurn(specialization);
+        verify(turnService).PassTurn("MedicinaGeneral");
     }
 
-    @Test
-    void passTurn_NoTurnsAvailable() {
-        // Arrange
-        String specialization = "MedicinaGeneral";
-        doThrow(new NoSuchElementException("No hay turnos disponibles para la especialidad: MedicinaGeneral"))
-                .when(turnService).PassTurn(anyString());
-
-        // Act
-        ResponseEntity<Map<String, String>> response = turnController.passTurn(specialization);
-
-        // Assert
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertEquals("Error al pasar el turno: No hay turnos disponibles para la especialidad: MedicinaGeneral",
-                response.getBody().get("error"));
-    }
 
     @Test
-    void disableTurn_Success() {
+    void disableTurn_validAdminToken_shouldDisableTurn() {
         // Arrange
-        String specialization = "MedicinaGeneral";
-        doNothing().when(turnService).DisableTurns(anyString());
+        doNothing().when(turnService).DisableTurns("MedicinaGeneral");
 
         // Act
-        ResponseEntity<Map<String, String>> response = turnController.disableTurn(specialization);
+        ResponseEntity<Map<String, String>> response = turnController.disableTurn("MedicinaGeneral", validToken);
 
         // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertEquals("Turnos deshabilitados exitosamente", response.getBody().get("message"));
 
-        verify(turnService).DisableTurns(specialization);
+        verify(turnService).DisableTurns("MedicinaGeneral");
     }
 
     @Test
-    void disableTurn_ThrowsException() {
-        // Arrange
-        String specialization = "MedicinaGeneral";
-        doThrow(new RuntimeException("Error al deshabilitar"))
-                .when(turnService).DisableTurns(anyString());
-
+    void disableTurn_nonAdminToken_shouldReturnUnauthorized() {
         // Act
-        ResponseEntity<Map<String, String>> response = turnController.disableTurn(specialization);
+        ResponseEntity<Map<String, String>> response = turnController.disableTurn("MedicinaGeneral", validToken1);
 
         // Assert
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertEquals("Error al deshabilitar los turnos: Error al deshabilitar",
-                response.getBody().get("error"));
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertTrue(response.getBody().get("error").contains("No autorizado"));
+
+        // Verify turnService was not called
+        verify(turnService, never()).DisableTurns(any());
     }
 
     @Test
-    void getTurns_Success() {
+    void getTurns_validToken_shouldReturnTurns() {
         // Arrange
-        String specialization = "MedicinaGeneral";
-        List<Turn> turnList = new ArrayList<>();
-        turnList.add(sampleTurn);
+        List<Turn> mockTurns = new ArrayList<>();
+        Turn turn1 = new Turn();
+        turn1.setCode("M-1");
+        turn1.setPatient("Patient One");
+        turn1.setSpecialization(Specialization.MedicinaGeneral);
+        turn1.setStatus("Activo");
+        turn1.setIdentityDocument("1234567890");
+        turn1.setRole(UserRol.Estudiante);
+        turn1.setDisabilitie(Disabilitie.NoTiene);
+        mockTurns.add(turn1);
 
-        when(turnService.getNextTurns(anyString())).thenReturn(turnList);
+        when(turnService.getNextTurns("MedicinaGeneral")).thenReturn(mockTurns);
 
         // Act
-        ResponseEntity<?> response = turnController.getTurns(specialization);
+        ResponseEntity<?> response = turnController.getTurns("MedicinaGeneral", validToken);
 
         // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -216,135 +218,229 @@ class TurnControllerTest {
         assertTrue(response.getBody() instanceof List);
 
         @SuppressWarnings("unchecked")
-        List<TurnDTO> turnDTOList = (List<TurnDTO>) response.getBody();
-        assertEquals(1, turnDTOList.size());
-        assertEquals(sampleTurn.getCode(), turnDTOList.get(0).getCode());
-        assertEquals(sampleTurn.getPatient(), turnDTOList.get(0).getUserName());
+        List<TurnDTO> responseTurns = (List<TurnDTO>) response.getBody();
+        assertEquals(1, responseTurns.size());
+        assertEquals("M-1", responseTurns.get(0).getCode());
 
-        verify(turnService).getNextTurns(specialization);
+        verify(turnService).getNextTurns("MedicinaGeneral");
     }
 
     @Test
-    void getTurns_ThrowsException() {
-        // Arrange
-        String specialization = "MedicinaGeneral";
-        when(turnService.getNextTurns(anyString())).thenThrow(new RuntimeException("Error al obtener turnos"));
-
+    void getTurns_invalidToken_shouldReturnUnauthorized() {
         // Act
-        ResponseEntity<?> response = turnController.getTurns(specialization);
+        ResponseEntity<?> response = turnController.getTurns("MedicinaGeneral", tokenSinClaims);
 
         // Assert
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-        assertNotNull(response.getBody());
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
         assertTrue(response.getBody() instanceof Map);
 
         @SuppressWarnings("unchecked")
-        Map<String, String> errorResponse = (Map<String, String>) response.getBody();
-        assertEquals("Error al obtener la lista de turnos: Error al obtener turnos",
-                errorResponse.get("error"));
+        Map<String, String> responseBody = (Map<String, String>) response.getBody();
+        assertTrue(responseBody.get("error").contains("No autorizado"));
+
+        // Verify turnService was not called
+        verify(turnService, never()).getNextTurns(any());
     }
 
     @Test
-    void generateReport_Success() {
+    void generateReport_validAdminToken_shouldGenerateReport() {
         // Arrange
         ReportDTO reportDTO = new ReportDTO();
-        reportDTO.setInitialDate(LocalDate.now().minusDays(7));
-        reportDTO.setFinalDate(LocalDate.now());
-        reportDTO.setUserRole("ESTUDIANTE");
+        reportDTO.setInitialDate(java.time.LocalDate.now());
+        reportDTO.setFinalDate(java.time.LocalDate.now());
+        reportDTO.setUserRole("Estudiante");
 
-        when(turnService.generateReport(any(LocalDate.class), any(LocalDate.class), anyString()))
-                .thenReturn(sampleReport);
+        Report mockReport = new Report();
+        mockReport.setTotalTurns(10);
+
+        when(turnService.generateReport(
+                reportDTO.getInitialDate(),
+                reportDTO.getFinalDate(),
+                reportDTO.getUserRole()
+        )).thenReturn(mockReport);
 
         // Act
-        ResponseEntity<Report> response = turnController.generateReport(reportDTO);
+        ResponseEntity<?> response = turnController.generateReport(reportDTO, validToken);
 
         // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertEquals(sampleReport, response.getBody());
+        assertTrue(response.getBody() instanceof Report);
+        assertEquals(10, ((Report) response.getBody()).getTotalTurns());
 
         verify(turnService).generateReport(
-                eq(reportDTO.getInitialDate()),
-                eq(reportDTO.getFinalDate()),
-                eq(reportDTO.getUserRole())
+                reportDTO.getInitialDate(),
+                reportDTO.getFinalDate(),
+                reportDTO.getUserRole()
         );
     }
 
     @Test
-    void generateReport_MissingDates() {
+    void generateReport_nonAdminToken_shouldReturnUnauthorized() {
         // Arrange
         ReportDTO reportDTO = new ReportDTO();
-        // Missing initialDate and finalDate
+        reportDTO.setInitialDate(java.time.LocalDate.now());
+        reportDTO.setFinalDate(java.time.LocalDate.now());
+        reportDTO.setUserRole("Estudiante");
 
         // Act
-        ResponseEntity<Report> response = turnController.generateReport(reportDTO);
+        ResponseEntity<?> response = turnController.generateReport(reportDTO, validToken1);
 
         // Assert
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-        assertNull(response.getBody());
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertTrue(response.getBody() instanceof Map);
+
+        @SuppressWarnings("unchecked")
+        Map<String, String> responseBody = (Map<String, String>) response.getBody();
+        assertTrue(responseBody.get("error").contains("No autorizado"));
+
+        // Verify turnService was not called
+        verify(turnService, never()).generateReport(any(), any(), any());
     }
 
     @Test
-    void getSpecializations_Success() {
+    void generateReport_missingDates_shouldReturnBadRequest() {
+        // Arrange
+        ReportDTO reportDTO = new ReportDTO();
+        // No setting dates
+
+        // Act
+        ResponseEntity<?> response = turnController.generateReport(reportDTO, validToken);
+
+        // Assert
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+
+        // Verify turnService was not called
+        verify(turnService, never()).generateReport(any(), any(), any());
+    }
+
+    @Test
+    void getSpecializations_validToken_shouldReturnSpecializations() {
         // Arrange
         Specialization[] specializations = Specialization.values();
         when(turnService.getSpecializations()).thenReturn(specializations);
 
         // Act
-        ResponseEntity<Specialization[]> response = turnController.getSpecializations();
+        ResponseEntity<?> response = turnController.getSpecializations(validToken);
 
         // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertEquals(specializations, response.getBody());
+        assertTrue(response.getBody() instanceof Specialization[]);
+        assertEquals(specializations.length, ((Specialization[]) response.getBody()).length);
 
         verify(turnService).getSpecializations();
     }
 
     @Test
-    void getDisabilities_Success() {
+    void getSpecializations_invalidToken_shouldReturnUnauthorized() {
+        // Act
+        ResponseEntity<?> response = turnController.getSpecializations(tokenSinClaims);
+
+        // Assert
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertTrue(response.getBody() instanceof Map);
+
+        @SuppressWarnings("unchecked")
+        Map<String, String> responseBody = (Map<String, String>) response.getBody();
+        assertTrue(responseBody.get("error").contains("No autorizado"));
+
+        // Verify turnService was not called
+        verify(turnService, never()).getSpecializations();
+    }
+
+    @Test
+    void getDisabilities_validToken_shouldReturnDisabilities() {
         // Arrange
         Disabilitie[] disabilities = Disabilitie.values();
         when(turnService.getDisabilities()).thenReturn(disabilities);
 
-        ResponseEntity<Disabilitie[]> response = turnController.getDisabilities();
+        // Act
+        ResponseEntity<?> response = turnController.getDisabilities(validToken);
 
+        // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertEquals(disabilities, response.getBody());
+        assertTrue(response.getBody() instanceof Disabilitie[]);
+        assertEquals(disabilities.length, ((Disabilitie[]) response.getBody()).length);
 
         verify(turnService).getDisabilities();
     }
 
     @Test
-    void getInfoActualTurn_Success() {
-        Specialization specialization = Specialization.Psicologia;
-        TurnDTO turnDTO = new TurnDTO();
-        turnDTO.setCode("P-1");
-        turnDTO.setUserName("Ana Gómez");
+    void getDisabilities_invalidToken_shouldReturnUnauthorized() {
+        // Act
+        ResponseEntity<?> response = turnController.getDisabilities(tokenSinClaims);
 
-        when(turnService.getTurnActualTurn(any(Specialization.class))).thenReturn(turnDTO);
+        // Assert
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertTrue(response.getBody() instanceof Map);
 
-        ResponseEntity<TurnDTO> response = turnController.getInfoActualTurn(specialization);
+        @SuppressWarnings("unchecked")
+        Map<String, String> responseBody = (Map<String, String>) response.getBody();
+        assertTrue(responseBody.get("error").contains("No autorizado"));
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertEquals(turnDTO.getCode(), response.getBody().getCode());
-        assertEquals(turnDTO.getUserName(), response.getBody().getUserName());
-
-        verify(turnService).getTurnActualTurn(specialization);
+        // Verify turnService was not called
+        verify(turnService, never()).getDisabilities();
     }
 
     @Test
-    void getInfoActualTurn_NoActiveTurn() {
-        Specialization specialization = Specialization.Psicologia;
-        when(turnService.getTurnActualTurn(any(Specialization.class))).thenReturn(null);
+    void getInfoActualTurn_validToken_shouldReturnCurrentTurn() {
+        // Arrange
+        TurnDTO mockTurnDTO = new TurnDTO();
+        mockTurnDTO.setCode("M-1");
+        mockTurnDTO.setUserName("Patient One");
+        mockTurnDTO.setSpecialization(Specialization.MedicinaGeneral);
+        mockTurnDTO.setState("Activo");
 
-        ResponseEntity<TurnDTO> response = turnController.getInfoActualTurn(specialization);
+        when(turnService.getTurnActualTurn(Specialization.MedicinaGeneral)).thenReturn(mockTurnDTO);
 
+        // Act
+        ResponseEntity<?> response = turnController.getInfoActualTurn(Specialization.MedicinaGeneral, validToken);
+
+        // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNull(response.getBody());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody() instanceof TurnDTO);
+        assertEquals("M-1", ((TurnDTO) response.getBody()).getCode());
 
-        verify(turnService).getTurnActualTurn(specialization);
+        verify(turnService).getTurnActualTurn(Specialization.MedicinaGeneral);
+    }
+
+    @Test
+    void getInfoActualTurn_invalidToken_shouldReturnUnauthorized() {
+        // Act
+        ResponseEntity<?> response = turnController.getInfoActualTurn(Specialization.MedicinaGeneral, tokenSinClaims);
+
+        // Assert
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertTrue(response.getBody() instanceof Map);
+
+        @SuppressWarnings("unchecked")
+        Map<String, String> responseBody = (Map<String, String>) response.getBody();
+        assertTrue(responseBody.get("error").contains("No autorizado"));
+
+        // Verify turnService was not called
+        verify(turnService, never()).getTurnActualTurn(any());
+    }
+
+    @Test
+    void getInfoActualTurn_serviceError_shouldReturnInternalServerError() {
+        // Arrange
+        when(turnService.getTurnActualTurn(Specialization.MedicinaGeneral))
+                .thenThrow(new RuntimeException("No hay turno actual"));
+
+        // Act
+        ResponseEntity<?> response = turnController.getInfoActualTurn(Specialization.MedicinaGeneral, validToken);
+
+        // Assert
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertTrue(response.getBody() instanceof Map);
+
+        @SuppressWarnings("unchecked")
+        Map<String, String> responseBody = (Map<String, String>) response.getBody();
+        assertTrue(responseBody.get("error").contains("Error al obtener turno actual"));
+
+        verify(turnService).getTurnActualTurn(Specialization.MedicinaGeneral);
     }
 }

@@ -21,6 +21,12 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.JWTVerifier;
+import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.exceptions.JWTVerificationException;
+import com.auth0.jwt.interfaces.DecodedJWT;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +39,63 @@ public class TurnController {
 
     @Autowired
     private TurnService turnService;
+
+
+    private final String SECRET_KEY = "ContraseñaSuperSecreta123";
+
+    /**
+     * Método para validar el token JWT usando com.auth0.jwt
+     * @param token Token JWT a validar
+     * @return DecodedJWT del token si es válido
+     * @throws JWTVerificationException Si el token no es válido
+     */
+    private DecodedJWT validateToken(String token) throws JWTVerificationException {
+        if (token == null || token.isEmpty()) {
+            throw new JWTVerificationException("Token no proporcionado");
+        }
+
+        if (token.startsWith("Bearer ")) {
+            token = token.substring(7);
+        }
+
+        Algorithm algorithm = Algorithm.HMAC256(SECRET_KEY);
+        JWTVerifier verifier = JWT.require(algorithm).build();
+
+        DecodedJWT jwt = verifier.verify(token);
+
+        // Verificar que los claims requeridos existan y no estén vacíos
+        String[] requiredClaims = {"id", "userName", "email", "name", "role"};
+
+        for (String claim : requiredClaims) {
+            if (jwt.getClaim(claim).isNull() || jwt.getClaim(claim).asString() == null || jwt.getClaim(claim).asString().isEmpty()) {
+                throw new JWTVerificationException("El token no contiene el campo requerido: " + claim);
+            }
+        }
+
+        return jwt;
+    }
+
+
+    /**
+     * Método de verificación de autorización
+     * @param authHeader Header de autorización con el token JWT
+     * @param requiredRole Rol requerido para acceder al recurso (opcional)
+     * @return true si el token es válido y tiene el rol requerido
+     * @throws JWTVerificationException Si el token no es válido o no tiene el rol requerido
+     */
+    private boolean checkAuthorization(String authHeader, String requiredRole) throws JWTVerificationException {
+        DecodedJWT jwt = validateToken(authHeader);
+
+        if (requiredRole != null && !requiredRole.isEmpty()) {
+            String userRole = jwt.getClaim("role").asString();
+            if (!requiredRole.equals(userRole)) {
+                throw new JWTVerificationException("No tiene permisos suficientes para esta operación");
+            }
+        }
+
+        return true;
+    }
+
 
     @PostMapping("/create")
     @Operation(
@@ -62,6 +125,17 @@ public class TurnController {
                     )
             ),
             @ApiResponse(
+                    responseCode = "401",
+                    description = "No autorizado",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(
+                                    implementation = Map.class,
+                                    example = "{\"error\": \"No autorizado: Token inválido o expirado\"}"
+                            )
+                    )
+            ),
+            @ApiResponse(
                     responseCode = "500",
                     description = "Error interno del servidor",
                     content = @Content(
@@ -79,9 +153,13 @@ public class TurnController {
                     required = true,
                     schema = @Schema(implementation = TurnDTO.class)
             )
-            @RequestBody TurnDTO turnDTO
+            @RequestBody TurnDTO turnDTO,
+            @RequestHeader(value = "Authorization", required = true) String authHeader
     ) {
         try {
+            // Validar el token antes de procesar la solicitud
+            checkAuthorization(authHeader, null);
+
             String code = turnService.createTurn(
                     turnDTO.getUserName(),
                     turnDTO.getIdentityDocument(),
@@ -95,6 +173,10 @@ public class TurnController {
             response.put("message", "Turno creado exitosamente");
 
             return new ResponseEntity<>(response, HttpStatus.CREATED);
+        } catch (JWTVerificationException e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "No autorizado: " + e.getMessage());
+            return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
         } catch (Exception e) {
             Map<String, String> errorResponse = new HashMap<>();
             errorResponse.put("error", "Error al crear el turno: " + e.getMessage());
@@ -116,6 +198,28 @@ public class TurnController {
                             schema = @Schema(
                                     implementation = Map.class,
                                     example = "{\"message\": \"Turno pasado exitosamente\"}"
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "No autorizado",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(
+                                    implementation = Map.class,
+                                    example = "{\"error\": \"No autorizado: Token inválido o expirado\"}"
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "Acceso prohibido",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(
+                                    implementation = Map.class,
+                                    example = "{\"error\": \"Acceso prohibido: No tiene los permisos necesarios\"}"
                             )
                     )
             ),
@@ -147,15 +251,21 @@ public class TurnController {
                     required = true,
                     example = "MedicinaGeneral"
             )
-            @RequestParam String specialization
+            @RequestParam String specialization,
+            @RequestHeader(value = "Authorization", required = true) String authHeader
     ) {
         try {
+
             turnService.PassTurn(specialization);
 
             Map<String, String> response = new HashMap<>();
             response.put("message", "Turno pasado exitosamente");
 
             return new ResponseEntity<>(response, HttpStatus.OK);
+        } catch (JWTVerificationException e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "No autorizado: " + e.getMessage());
+            return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
         } catch (Exception e) {
             Map<String, String> errorResponse = new HashMap<>();
             errorResponse.put("error", "Error al pasar el turno: " + e.getMessage());
@@ -177,6 +287,28 @@ public class TurnController {
                             schema = @Schema(
                                     implementation = Map.class,
                                     example = "{\"message\": \"Turnos deshabilitados exitosamente\"}"
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "No autorizado",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(
+                                    implementation = Map.class,
+                                    example = "{\"error\": \"No autorizado: Token inválido o expirado\"}"
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "Acceso prohibido",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(
+                                    implementation = Map.class,
+                                    example = "{\"error\": \"Acceso prohibido: No tiene los permisos necesarios\"}"
                             )
                     )
             ),
@@ -208,15 +340,23 @@ public class TurnController {
                     required = true,
                     example = "MedicinaGeneral"
             )
-            @RequestParam String specialization
+            @RequestParam String specialization,
+            @RequestHeader(value = "Authorization", required = true) String authHeader
     ) {
         try {
+            // Solo secretarios médicos pueden deshabilitar turnos
+            checkAuthorization(authHeader, "Medical_Secretary");
+
             turnService.DisableTurns(specialization);
 
             Map<String, String> response = new HashMap<>();
             response.put("message", "Turnos deshabilitados exitosamente");
 
             return new ResponseEntity<>(response, HttpStatus.OK);
+        } catch (JWTVerificationException e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "No autorizado: " + e.getMessage());
+            return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
         } catch (Exception e) {
             Map<String, String> errorResponse = new HashMap<>();
             errorResponse.put("error", "Error al deshabilitar los turnos: " + e.getMessage());
@@ -239,6 +379,17 @@ public class TurnController {
                     )
             ),
             @ApiResponse(
+                    responseCode = "401",
+                    description = "No autorizado",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(
+                                    implementation = Map.class,
+                                    example = "{\"error\": \"No autorizado: Token inválido o expirado\"}"
+                            )
+                    )
+            ),
+            @ApiResponse(
                     responseCode = "500",
                     description = "Error interno del servidor",
                     content = @Content(
@@ -255,9 +406,13 @@ public class TurnController {
                     required = true,
                     example = "MedicinaGeneral"
             )
-            @RequestParam String specialization
+            @RequestParam String specialization,
+            @RequestHeader(value = "Authorization", required = true) String authHeader
     ) {
         try {
+            // Cualquier usuario autenticado puede ver la lista de turnos
+            checkAuthorization(authHeader, null);
+
             List<Turn> turnos = turnService.getNextTurns(specialization);
 
             List<TurnDTO> turnosDTO = turnos.stream().map(turn -> {
@@ -273,6 +428,10 @@ public class TurnController {
             }).toList();
 
             return new ResponseEntity<>(turnosDTO, HttpStatus.OK);
+        } catch (JWTVerificationException e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "No autorizado: " + e.getMessage());
+            return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
         } catch (Exception e) {
             Map<String, String> errorResponse = new HashMap<>();
             errorResponse.put("error", "Error al obtener la lista de turnos: " + e.getMessage());
@@ -302,6 +461,17 @@ public class TurnController {
                     )
             ),
             @ApiResponse(
+                    responseCode = "401",
+                    description = "No autorizado",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(
+                                    implementation = Map.class,
+                                    example = "{\"error\": \"No autorizado: Token inválido o expirado\"}"
+                            )
+                    )
+            ),
+            @ApiResponse(
                     responseCode = "500",
                     description = "Error interno del servidor",
                     content = @Content(
@@ -309,19 +479,23 @@ public class TurnController {
                     )
             )
     })
-    public ResponseEntity<Report> generateReport(
+    public ResponseEntity<?> generateReport(
             @Parameter(
                     description = "Datos para generar el reporte",
                     required = true,
                     schema = @Schema(implementation = ReportDTO.class)
             )
-            @RequestBody ReportDTO reportDTO
+            @RequestBody ReportDTO reportDTO,
+            @RequestHeader(value = "Authorization", required = true) String authHeader
     ) {
-        if (reportDTO.getInitialDate() == null || reportDTO.getFinalDate() == null) {
-            return ResponseEntity.badRequest().build();
-        }
-
         try {
+            // Solo los administradores o secretarios médicos pueden generar reportes
+            checkAuthorization(authHeader, "Medical_Secretary");
+
+            if (reportDTO.getInitialDate() == null || reportDTO.getFinalDate() == null) {
+                return ResponseEntity.badRequest().build();
+            }
+
             Report report = turnService.generateReport(
                     reportDTO.getInitialDate(),
                     reportDTO.getFinalDate(),
@@ -329,9 +503,15 @@ public class TurnController {
             );
 
             return ResponseEntity.ok(report);
+
+        } catch (JWTVerificationException e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "No autorizado: " + e.getMessage());
+            return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
         } catch (Exception e) {
-            System.err.println("Error generating report: " + e.getMessage());
-            return ResponseEntity.internalServerError().build();
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error al generar reporte: " + e.getMessage());
+            return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -340,17 +520,42 @@ public class TurnController {
             summary = "Obtener especializaciones disponibles",
             description = "Retorna todas las especializaciones disponibles en el sistema"
     )
-    @ApiResponse(
-            responseCode = "200",
-            description = "Especializaciones encontradas exitosamente",
-            content = @Content(
-                    mediaType = "application/json",
-                    array = @ArraySchema(schema = @Schema(implementation = Specialization.class))
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Especializaciones encontradas exitosamente",
+                    content = @Content(
+                            mediaType = "application/json",
+                            array = @ArraySchema(schema = @Schema(implementation = Specialization.class))
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "No autorizado",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(
+                                    implementation = Map.class,
+                                    example = "{\"error\": \"No autorizado: Token inválido o expirado\"}"
+                            )
+                    )
             )
-    )
-    public ResponseEntity<Specialization[]> getSpecializations() {
-        Specialization[] specializations = turnService.getSpecializations();
-        return ResponseEntity.ok(specializations);
+    })
+    public ResponseEntity<?> getSpecializations(
+            @RequestHeader(value = "Authorization", required = true) String authHeader
+    ) {
+        try {
+            // Cualquier usuario autenticado puede ver las especializaciones
+            checkAuthorization(authHeader, null);
+
+            Specialization[] specializations = turnService.getSpecializations();
+            return ResponseEntity.ok(specializations);
+
+        } catch (JWTVerificationException e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "No autorizado: " + e.getMessage());
+            return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
+        }
     }
 
     @GetMapping("/disabilities")
@@ -358,17 +563,42 @@ public class TurnController {
             summary = "Obtener tipos de discapacidades",
             description = "Retorna todos los tipos de discapacidades registrados en el sistema"
     )
-    @ApiResponse(
-            responseCode = "200",
-            description = "Discapacidades encontradas exitosamente",
-            content = @Content(
-                    mediaType = "application/json",
-                    array = @ArraySchema(schema = @Schema(implementation = Disabilitie.class))
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Discapacidades encontradas exitosamente",
+                    content = @Content(
+                            mediaType = "application/json",
+                            array = @ArraySchema(schema = @Schema(implementation = Disabilitie.class))
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "No autorizado",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(
+                                    implementation = Map.class,
+                                    example = "{\"error\": \"No autorizado: Token inválido o expirado\"}"
+                            )
+                    )
             )
-    )
-    public ResponseEntity<Disabilitie[]> getDisabilities() {
-        Disabilitie[] disabilities = turnService.getDisabilities();
-        return ResponseEntity.ok(disabilities);
+    })
+    public ResponseEntity<?> getDisabilities(
+            @RequestHeader(value = "Authorization", required = true) String authHeader
+    ) {
+        try {
+            // Cualquier usuario autenticado puede ver las discapacidades
+            checkAuthorization(authHeader, null);
+
+            Disabilitie[] disabilities = turnService.getDisabilities();
+            return ResponseEntity.ok(disabilities);
+
+        } catch (JWTVerificationException e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "No autorizado: " + e.getMessage());
+            return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
+        }
     }
 
     @GetMapping("/actualTurn")
@@ -386,6 +616,17 @@ public class TurnController {
                     )
             ),
             @ApiResponse(
+                    responseCode = "401",
+                    description = "No autorizado",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(
+                                    implementation = Map.class,
+                                    example = "{\"error\": \"No autorizado: Token inválido o expirado\"}"
+                            )
+                    )
+            ),
+            @ApiResponse(
                     responseCode = "404",
                     description = "No hay turno actualmente",
                     content = @Content(
@@ -393,15 +634,30 @@ public class TurnController {
                     )
             )
     })
-    public ResponseEntity<TurnDTO> getInfoActualTurn(
+    public ResponseEntity<?> getInfoActualTurn(
             @Parameter(
                     description = "Especializacion de la cual se requiera saber el turno actual",
                     required = true,
                     example = "Psicologia"
             )
-            @RequestParam Specialization specialization
+            @RequestParam Specialization specialization,
+            @RequestHeader(value = "Authorization", required = true) String authHeader
     ) {
-        TurnDTO turn = turnService.getTurnActualTurn(specialization);
-        return ResponseEntity.ok(turn);
+        try {
+            // Cualquier usuario autenticado puede ver el turno actual
+            checkAuthorization(authHeader, null);
+
+            TurnDTO turn = turnService.getTurnActualTurn(specialization);
+            return ResponseEntity.ok(turn);
+
+        } catch (JWTVerificationException e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "No autorizado: " + e.getMessage());
+            return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
+        } catch (Exception e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error al obtener turno actual: " + e.getMessage());
+            return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 }
