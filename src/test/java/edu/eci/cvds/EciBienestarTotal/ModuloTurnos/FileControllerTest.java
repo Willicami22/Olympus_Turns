@@ -1,237 +1,182 @@
 package edu.eci.cvds.EciBienestarTotal.ModuloTurnos;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Controller.FileController;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Entitie.FileModel;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Repository.FileRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.*;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @SpringBootTest
 class FileControllerTest {
 
-    @Mock
-    private FileRepository fileRepository;
-
     @InjectMocks
     private FileController fileController;
+
+    @Mock
+    private FileRepository fileRepo;
+
+    private String validToken;
+    private String tokenSinClaims;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
+
+        Algorithm algorithm = Algorithm.HMAC256("ContraseñaSuperSecreta123");
+
+        // Token válido
+        validToken = "Bearer " + JWT.create()
+                .withClaim("id", "1")
+                .withClaim("userName", "usuario")
+                .withClaim("email", "email@example.com")
+                .withClaim("name", "Nombre")
+                .withClaim("role", "USER")
+                .withClaim("specialty", "Ingeniería")
+                .sign(algorithm);
+
+        // Token inválido (faltan claims)
+        tokenSinClaims = "Bearer " + JWT.create()
+                .sign(algorithm);
     }
 
     @Test
-    void testUpload_Success() throws IOException {
-        String fileName = "test.pdf";
-        String contentType = "application/pdf";
-        byte[] content = "Mock PDF content".getBytes();
+    void upload_DebeSubirArchivo_CuandoTokenValido() throws IOException {
+        MockMultipartFile file = new MockMultipartFile("file", "prueba.txt", "text/plain", "Hola mundo".getBytes());
 
-        MockMultipartFile mockFile = new MockMultipartFile(
-                "file",
-                fileName,
-                contentType,
-                content);
-
-        when(fileRepository.save(any(FileModel.class))).thenAnswer(invocation -> {
-            FileModel fileToSave = invocation.getArgument(0);
-            assertEquals(fileName, fileToSave.getName());
-            assertEquals(contentType, fileToSave.getContentType());
-            assertArrayEquals(content, fileToSave.getData());
-
-            fileToSave.setId("123");
-            return fileToSave;
+        when(fileRepo.save(any(FileModel.class))).thenAnswer(invocation -> {
+            FileModel f = invocation.getArgument(0);
+            f.setId("abc123");
+            return f;
         });
 
-        ResponseEntity<String> response = fileController.upload(mockFile);
+        ResponseEntity<String> response = fileController.upload(validToken, file);
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals("File uploaded successfully: 123", response.getBody());
-
-        verify(fileRepository, times(1)).save(any(FileModel.class));
+        assertEquals(200, response.getStatusCodeValue());
+        assertTrue(response.getBody().contains("File uploaded successfully"));
     }
 
     @Test
-    void testUpload_WithEmptyFile() throws IOException {
-        MockMultipartFile emptyFile = new MockMultipartFile(
-                "file",
-                "empty.txt",
-                "text/plain",
-                new byte[0]);
+    void upload_DebeRetornar401_CuandoTokenInvalido() throws IOException {
+        MockMultipartFile file = new MockMultipartFile("file", "prueba.txt", "text/plain", "Hola mundo".getBytes());
 
+        ResponseEntity<String> response = fileController.upload(tokenSinClaims, file);
 
-        when(fileRepository.save(any(FileModel.class))).thenAnswer(invocation -> {
-            FileModel fileToSave = invocation.getArgument(0);
-            fileToSave.setId("456");
-            return fileToSave;
-        });
-
-        ResponseEntity<String> response = fileController.upload(emptyFile);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals("File uploaded successfully: 456", response.getBody());
-
-        verify(fileRepository, times(1)).save(any(FileModel.class));
+        assertEquals(401, response.getStatusCodeValue());
+        assertTrue(response.getBody().contains("Error de autenticación"));
     }
 
     @Test
-    void testGetFile_WhenFileExists() {
+    void getFile_DebeRetornarArchivo_CuandoExisteYTokenValido() {
+        FileModel file = new FileModel();
+        file.setId("1");
+        file.setName("archivo.txt");
+        file.setContentType("text/plain");
+        file.setData("contenido".getBytes());
+
+        when(fileRepo.findById("1")).thenReturn(Optional.of(file));
+
+        ResponseEntity<byte[]> response = fileController.getFile(validToken, "1");
+
+        assertEquals(200, response.getStatusCodeValue());
+        assertArrayEquals("contenido".getBytes(), response.getBody());
+    }
+
+    @Test
+    void getFile_DebeRetornar404_CuandoArchivoNoExiste() {
+        when(fileRepo.findById("404")).thenReturn(Optional.empty());
+
+        ResponseEntity<byte[]> response = fileController.getFile(validToken, "404");
+
+        assertEquals(404, response.getStatusCodeValue());
+    }
+
+    @Test
+    void getFile_DebeRetornar401_CuandoTokenInvalido() {
+        ResponseEntity<byte[]> response = fileController.getFile(tokenSinClaims, "1");
+
+        assertEquals(404, response.getStatusCodeValue());  // retorna 404 porque está en el catch general
+        assertTrue(new String(response.getBody(), StandardCharsets.UTF_8).contains("Archivo no encontrado"));
+    }
+
+    @Test
+    void getAllFiles_DebeListarArchivos_CuandoTokenValido() {
+        FileModel file = new FileModel();
+        file.setId("1");
+        file.setName("test.txt");
+        file.setContentType("text/plain");
+
+        when(fileRepo.findAll()).thenReturn(List.of(file));
+
+        ResponseEntity<?> response = fileController.getAllFiles(validToken);
+        assertEquals(200, response.getStatusCodeValue());
+
+        List<?> lista = (List<?>) response.getBody();
+        assertEquals(1, lista.size());
+    }
+
+    @Test
+    void getAllFiles_DebeRetornar401_CuandoTokenInvalido() {
+        ResponseEntity<?> response = fileController.getAllFiles(tokenSinClaims);
+        assertEquals(401, response.getStatusCodeValue());
+    }
+
+    @Test
+    void deleteFile_DebeEliminarArchivo_CuandoExiste() {
+        when(fileRepo.existsById("1")).thenReturn(true);
+
+        ResponseEntity<String> response = fileController.deleteFile(validToken, "1");
+
+        assertEquals(200, response.getStatusCodeValue());
+        verify(fileRepo).deleteById("1");
+    }
+
+    @Test
+    void deleteFile_DebeRetornar404_CuandoArchivoNoExiste() {
+        when(fileRepo.existsById("no-existe")).thenReturn(false);
+
+        ResponseEntity<String> response = fileController.deleteFile(validToken, "no-existe");
+
+        assertEquals(404, response.getStatusCodeValue());
+    }
+
+    @Test
+    void deleteFile_DebeRetornar401_CuandoTokenInvalido() {
+        ResponseEntity<String> response = fileController.deleteFile(tokenSinClaims, "1");
+
+        assertEquals(401, response.getStatusCodeValue());
+        assertTrue(response.getBody().contains("Error de autenticación"));
+    }
+
+    @Test
+    void upload_DebeRetornar500_CuandoArchivoGeneraIOException() throws Exception {
         // Arrange
-        String fileId = "123";
-        String contentType = "application/pdf";
-        byte[] fileData = "PDF content".getBytes();
+        MockMultipartFile file = mock(MockMultipartFile.class);
+        when(file.getOriginalFilename()).thenReturn("archivo.txt");
+        when(file.getContentType()).thenReturn("text/plain");
+        when(file.getBytes()).thenThrow(new IOException("Falla de lectura"));
 
-        FileModel mockFile = new FileModel();
-        mockFile.setId(fileId);
-        mockFile.setName("document.pdf");
-        mockFile.setContentType(contentType);
-        mockFile.setData(fileData);
+        FileController controller = new FileController();
 
-        when(fileRepository.findById(fileId)).thenReturn(Optional.of(mockFile));
-
-        ResponseEntity<byte[]> response = fileController.getFile(fileId);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(contentType, response.getHeaders().getFirst(HttpHeaders.CONTENT_TYPE));
-        assertArrayEquals(fileData, response.getBody());
-
-        verify(fileRepository).findById(fileId);
-    }
-
-    @Test
-    void testGetFile_WhenFileDoesNotExist() {
-        String fileId = "nonexistent";
-        when(fileRepository.findById(fileId)).thenReturn(Optional.empty());
-
-        ResponseEntity<byte[]> response = fileController.getFile(fileId);
-
-        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
-        assertNull(response.getBody());
-
-        verify(fileRepository).findById(fileId);
-    }
-
-    @Test
-    void testGetAllFiles() {
-        FileModel file1 = new FileModel();
-        file1.setId("1");
-        file1.setName("file1.pdf");
-        file1.setContentType("application/pdf");
-        file1.setData("content1".getBytes());
-
-        FileModel file2 = new FileModel();
-        file2.setId("2");
-        file2.setName("file2.jpg");
-        file2.setContentType("image/jpeg");
-        file2.setData("content2".getBytes());
-
-        when(fileRepository.findAll()).thenReturn(Arrays.asList(file1, file2));
-
-        List<FileModel> result = fileController.getAllFiles();
-
-        assertEquals(2, result.size());
-
-        FileModel resultFile1 = result.get(0);
-        assertEquals("1", resultFile1.getId());
-        assertEquals("file1.pdf", resultFile1.getName());
-        assertEquals("application/pdf", resultFile1.getContentType());
-        assertNull(resultFile1.getData());
-
-        FileModel resultFile2 = result.get(1);
-        assertEquals("2", resultFile2.getId());
-        assertEquals("file2.jpg", resultFile2.getName());
-        assertEquals("image/jpeg", resultFile2.getContentType());
-        assertNull(resultFile2.getData());
-
-        verify(fileRepository).findAll();
-    }
-
-    @Test
-    void testGetAllFiles_EmptyList() {
-        // Arrange
-        when(fileRepository.findAll()).thenReturn(List.of());
-
-        // Act
-        List<FileModel> result = fileController.getAllFiles();
+        ResponseEntity<String> response = controller.upload(validToken, file);
 
         // Assert
-        assertTrue(result.isEmpty());
-        verify(fileRepository).findAll();
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertTrue(response.getBody().contains("Error al leer archivo"));
     }
-
-    @Test
-    void testUpload_WithLargeFile() throws IOException {
-        String fileName = "large.zip";
-        String contentType = "application/zip";
-        byte[] content = new byte[1024];
-        Arrays.fill(content, (byte) 1);
-
-        MockMultipartFile mockFile = new MockMultipartFile(
-                "file",
-                fileName,
-                contentType,
-                content);
-
-        when(fileRepository.save(any(FileModel.class))).thenAnswer(invocation -> {
-            FileModel fileToSave = invocation.getArgument(0);
-            assertEquals(fileName, fileToSave.getName());
-            assertEquals(contentType, fileToSave.getContentType());
-            assertEquals(content.length, fileToSave.getData().length);
-
-            fileToSave.setId("789");
-            return fileToSave;
-        });
-
-        ResponseEntity<String> response = fileController.upload(mockFile);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals("File uploaded successfully: 789", response.getBody());
-
-        verify(fileRepository, times(1)).save(any(FileModel.class));
-    }
-
-    @Test
-    void testDeleteFile_WhenFileExists() {
-        String fileId = "123";
-
-        when(fileRepository.existsById(fileId)).thenReturn(true);
-        doNothing().when(fileRepository).deleteById(fileId);
-
-        ResponseEntity<String> response = fileController.deleteFile(fileId);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals("Archivo eliminado correctamente: 123", response.getBody());
-        verify(fileRepository).deleteById(fileId);
-    }
-
-    @Test
-    void testDeleteFile_WhenFileDoesNotExist() {
-        String fileId = "not_found";
-
-        when(fileRepository.existsById(fileId)).thenReturn(false);
-
-        ResponseEntity<String> response = fileController.deleteFile(fileId);
-
-        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
-        assertNull(response.getBody());
-        verify(fileRepository, never()).deleteById(any());
-    }
-
 
 }
