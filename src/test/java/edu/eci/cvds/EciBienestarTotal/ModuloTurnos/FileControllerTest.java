@@ -37,7 +37,7 @@ class FileControllerTest {
     void setUp() {
         MockitoAnnotations.openMocks(this);
 
-        Algorithm algorithm = Algorithm.HMAC256("ContraseñaSuperSecreta123");
+        Algorithm algorithm = Algorithm.HMAC256("supersecretpassword1234567891011121314");
 
         // Token válido
         validToken = "Bearer " + JWT.create()

@@ -34,7 +34,7 @@ public class FileController {
     @Autowired
     private FileRepository fileRepo;
 
-    private final String SECRET_KEY = "ContraseñaSuperSecreta123";
+    private final String SECRET_KEY = "supersecretpassword1234567891011121314";
 
     /**
      * Método para validar el token JWT usando com.auth0.jwt
@@ -56,7 +56,6 @@ public class FileController {
 
         DecodedJWT jwt = verifier.verify(token);
 
-        // Verificar que los claims requeridos existan y no estén vacíos
         String[] requiredClaims = {"id", "userName", "email", "name", "role"};
 
         for (String claim : requiredClaims) {

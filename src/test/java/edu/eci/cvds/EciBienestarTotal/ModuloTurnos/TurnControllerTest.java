@@ -42,14 +42,12 @@ public class TurnControllerTest {
     private String validToken;
     private String tokenSinClaims;
     private String validToken1;
-    private final String SECRET_KEY = "ContraseñaSuperSecreta123";
 
     @BeforeEach
     void setUp() {
-        // Generamos tokens válidos para pruebas
         MockitoAnnotations.openMocks(this);
 
-        Algorithm algorithm = Algorithm.HMAC256("ContraseñaSuperSecreta123");
+        Algorithm algorithm = Algorithm.HMAC256("supersecretpassword1234567891011121314");
 
         validToken = "Bearer " + JWT.create()
                 .withClaim("id", "1")
@@ -73,22 +71,6 @@ public class TurnControllerTest {
                 .sign(algorithm);
     }
 
-    private String generateValidToken(String id, String name, String email, String role, String specialty) {
-        long now = System.currentTimeMillis();
-        Date expiryDate = new Date(now + 3600000); // Token válido por 1 hora
-
-        Algorithm algorithm = Algorithm.HMAC256(SECRET_KEY);
-
-        return "Bearer " + JWT.create()
-                .withClaim("id", id)
-                .withClaim("userName", id)
-                .withClaim("email", email)
-                .withClaim("name", name)
-                .withClaim("role", role)
-                .withClaim("specialty", specialty)
-                .withExpiresAt(expiryDate)
-                .sign(algorithm);
-    }
 
     @Test
     void createTurn_validToken_shouldCreateTurn() {
