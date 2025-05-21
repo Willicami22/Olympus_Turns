@@ -41,7 +41,7 @@ public class TurnController {
     private TurnService turnService;
 
 
-    private final String SECRET_KEY = "ContraseñaSuperSecreta123";
+    private final String SECRET_KEY = "supersecretpassword1234567891011121314";
 
     /**
      * Método para validar el token JWT usando com.auth0.jwt
@@ -157,7 +157,6 @@ public class TurnController {
             @RequestHeader(value = "Authorization", required = true) String authHeader
     ) {
         try {
-            // Validar el token antes de procesar la solicitud
             checkAuthorization(authHeader, null);
 
             String code = turnService.createTurn(
@@ -344,7 +343,6 @@ public class TurnController {
             @RequestHeader(value = "Authorization", required = true) String authHeader
     ) {
         try {
-            // Solo secretarios médicos pueden deshabilitar turnos
             checkAuthorization(authHeader, "Medical_Secretary");
 
             turnService.DisableTurns(specialization);
@@ -489,7 +487,6 @@ public class TurnController {
             @RequestHeader(value = "Authorization", required = true) String authHeader
     ) {
         try {
-            // Solo los administradores o secretarios médicos pueden generar reportes
             checkAuthorization(authHeader, "Medical_Secretary");
 
             if (reportDTO.getInitialDate() == null || reportDTO.getFinalDate() == null) {
@@ -545,7 +542,6 @@ public class TurnController {
             @RequestHeader(value = "Authorization", required = true) String authHeader
     ) {
         try {
-            // Cualquier usuario autenticado puede ver las especializaciones
             checkAuthorization(authHeader, null);
 
             Specialization[] specializations = turnService.getSpecializations();
@@ -644,7 +640,6 @@ public class TurnController {
             @RequestHeader(value = "Authorization", required = true) String authHeader
     ) {
         try {
-            // Cualquier usuario autenticado puede ver el turno actual
             checkAuthorization(authHeader, null);
 
             TurnDTO turn = turnService.getTurnActualTurn(specialization);
