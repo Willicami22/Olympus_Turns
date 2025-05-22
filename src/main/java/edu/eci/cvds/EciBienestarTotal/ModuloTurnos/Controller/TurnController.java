@@ -343,7 +343,7 @@ public class TurnController {
             @RequestHeader(value = "Authorization", required = true) String authHeader
     ) {
         try {
-            checkAuthorization(authHeader, "Medical_Secretary");
+            checkAuthorization(authHeader, null);
 
             turnService.DisableTurns(specialization);
 
@@ -408,7 +408,6 @@ public class TurnController {
             @RequestHeader(value = "Authorization", required = true) String authHeader
     ) {
         try {
-            // Cualquier usuario autenticado puede ver la lista de turnos
             checkAuthorization(authHeader, null);
 
             List<Turn> turnos = turnService.getNextTurns(specialization);
@@ -487,7 +486,7 @@ public class TurnController {
             @RequestHeader(value = "Authorization", required = true) String authHeader
     ) {
         try {
-            checkAuthorization(authHeader, "Medical_Secretary");
+            checkAuthorization(authHeader, null);
 
             if (reportDTO.getInitialDate() == null || reportDTO.getFinalDate() == null) {
                 return ResponseEntity.badRequest().build();
@@ -584,7 +583,6 @@ public class TurnController {
             @RequestHeader(value = "Authorization", required = true) String authHeader
     ) {
         try {
-            // Cualquier usuario autenticado puede ver las discapacidades
             checkAuthorization(authHeader, null);
 
             Disabilitie[] disabilities = turnService.getDisabilities();

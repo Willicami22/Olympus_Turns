@@ -162,18 +162,7 @@ public class TurnControllerTest {
         verify(turnService).DisableTurns("MedicinaGeneral");
     }
 
-    @Test
-    void disableTurn_nonAdminToken_shouldReturnUnauthorized() {
-        // Act
-        ResponseEntity<Map<String, String>> response = turnController.disableTurn("MedicinaGeneral", validToken1);
 
-        // Assert
-        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
-        assertTrue(response.getBody().get("error").contains("No autorizado"));
-
-        // Verify turnService was not called
-        verify(turnService, never()).DisableTurns(any());
-    }
 
     @Test
     void getTurns_validToken_shouldReturnTurns() {
@@ -257,28 +246,7 @@ public class TurnControllerTest {
         );
     }
 
-    @Test
-    void generateReport_nonAdminToken_shouldReturnUnauthorized() {
-        // Arrange
-        ReportDTO reportDTO = new ReportDTO();
-        reportDTO.setInitialDate(java.time.LocalDate.now());
-        reportDTO.setFinalDate(java.time.LocalDate.now());
-        reportDTO.setUserRole("Estudiante");
 
-        // Act
-        ResponseEntity<?> response = turnController.generateReport(reportDTO, validToken1);
-
-        // Assert
-        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
-        assertTrue(response.getBody() instanceof Map);
-
-        @SuppressWarnings("unchecked")
-        Map<String, String> responseBody = (Map<String, String>) response.getBody();
-        assertTrue(responseBody.get("error").contains("No autorizado"));
-
-        // Verify turnService was not called
-        verify(turnService, never()).generateReport(any(), any(), any());
-    }
 
     @Test
     void generateReport_missingDates_shouldReturnBadRequest() {
