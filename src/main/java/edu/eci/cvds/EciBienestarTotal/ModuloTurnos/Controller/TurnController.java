@@ -6,9 +6,12 @@ import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Entitie.Report;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Entitie.Turn;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Enum.Disabilitie;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Enum.Specialization;
+import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Repository.ReportRepository;
 import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Service.TurnService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,9 +30,11 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/turns")
@@ -40,6 +45,8 @@ public class TurnController {
     @Autowired
     private TurnService turnService;
 
+    @Autowired
+    private ReportRepository reportRepository;
 
     private final String SECRET_KEY = "supersecretpassword1234567891011121314";
 
@@ -109,7 +116,7 @@ public class TurnController {
                             mediaType = "application/json",
                             schema = @Schema(
                                     implementation = Map.class,
-                                    example = "{\"code\": \"T001\", \"message\": \"Turno creado exitosamente\"}"
+                                    example = "{\"code\": \"M-1\", \"message\": \"Turno creado exitosamente\"}"
                             )
                     )
             ),
@@ -650,6 +657,77 @@ public class TurnController {
         } catch (Exception e) {
             Map<String, String> errorResponse = new HashMap<>();
             errorResponse.put("error", "Error al obtener turno actual: " + e.getMessage());
+            return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // Agregar este método al TurnController existente
+
+    @GetMapping("/reports")
+    @Operation(
+            summary = "Listar todos los reportes generados",
+            description = "Obtiene la lista de todos los reportes generados disponibles para exportar"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Lista de reportes obtenida exitosamente",
+                    content = @Content(
+                            mediaType = "application/json",
+                            array = @ArraySchema(schema = @Schema(implementation = Report.class))
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "No autorizado",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(
+                                    implementation = Map.class,
+                                    example = "{\"error\": \"No autorizado: Token inválido o expirado\"}"
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "Acceso prohibido",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(
+                                    implementation = Map.class,
+                                    example = "{\"error\": \"Acceso prohibido: No tiene los permisos necesarios\"}"
+                            )
+                    )
+            )
+    })
+    public ResponseEntity<?> getAllReports(
+            @RequestHeader(value = "Authorization", required = true) String authHeader
+    ) {
+        try {
+            // Solo los usuarios con rol Medical_Secretary pueden ver todos los reportes
+            checkAuthorization(authHeader, "Medical_Secretary");
+
+            // Obtener todos los reportes desde el repositorio
+            List<Report> reports = reportRepository.findAll();
+
+            // Ordenar por fecha de generación (más recientes primero)
+            reports.sort((r1, r2) -> {
+                int dateComparison = r2.getActualDate().compareTo(r1.getActualDate());
+                if (dateComparison == 0) {
+                    return r2.getActualTime().compareTo(r1.getActualTime());
+                }
+                return dateComparison;
+            });
+
+            return ResponseEntity.ok(reports);
+
+        } catch (JWTVerificationException e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "No autorizado: " + e.getMessage());
+            return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
+        } catch (Exception e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Error al obtener la lista de reportes: " + e.getMessage());
             return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
