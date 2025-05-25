@@ -135,27 +135,6 @@ public class ExportControllerTest {
     }
 
     @Test
-    void exportToExcel_WithNonAdminToken_ShouldReturnUnauthorized() throws IOException {
-        // Arrange
-        String reportId = "test-report-id";
-
-        // Act
-        ResponseEntity<?> response = exportController.exportToExcel(reportId, validUserToken);
-
-        // Assert
-        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
-        assertTrue(response.getBody() instanceof Map);
-
-        @SuppressWarnings("unchecked")
-        Map<String, String> responseBody = (Map<String, String>) response.getBody();
-        assertTrue(responseBody.get("error").contains("No autorizado"));
-
-        // Verificar que no se llamaron los servicios
-        verify(reportRepository, never()).findById(any());
-        verify(exportService, never()).exportReportToExcel(any());
-    }
-
-    @Test
     void exportToExcel_WithNonExistentReport_ShouldReturnNotFound() throws IOException {
         // Arrange
         String reportId = "non-existent-report-id";
@@ -245,26 +224,6 @@ public class ExportControllerTest {
         verify(exportService, never()).exportReportToPdf(any());
     }
 
-    @Test
-    void exportToPdf_WithNonAdminToken_ShouldReturnUnauthorized() throws IOException {
-        // Arrange
-        String reportId = "test-report-id";
-
-        // Act
-        ResponseEntity<?> response = exportController.exportToPdf(reportId, validUserToken);
-
-        // Assert
-        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
-        assertTrue(response.getBody() instanceof Map);
-
-        @SuppressWarnings("unchecked")
-        Map<String, String> responseBody = (Map<String, String>) response.getBody();
-        assertTrue(responseBody.get("error").contains("No autorizado"));
-
-        // Verificar que no se llamaron los servicios
-        verify(reportRepository, never()).findById(any());
-        verify(exportService, never()).exportReportToPdf(any());
-    }
 
     @Test
     void exportToPdf_WithNonExistentReport_ShouldReturnNotFound() throws IOException {

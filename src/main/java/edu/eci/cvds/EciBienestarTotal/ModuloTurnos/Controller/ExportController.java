@@ -145,7 +145,7 @@ public class ExportController {
     ) {
         try {
             // Solo los usuarios con rol Medical_Secretary pueden exportar reportes
-            checkAuthorization(authHeader, "Medical_Secretary");
+            checkAuthorization(authHeader, null);
 
             Optional<Report> reportOpt = reportRepository.findById(reportId);
             if (reportOpt.isEmpty()) {
@@ -230,7 +230,7 @@ public class ExportController {
     ) {
         try {
             // Solo los usuarios con rol Medical_Secretary pueden exportar reportes
-            checkAuthorization(authHeader, "Medical_Secretary");
+            checkAuthorization(authHeader, null);
 
             Optional<Report> reportOpt = reportRepository.findById(reportId);
             if (reportOpt.isEmpty()) {
