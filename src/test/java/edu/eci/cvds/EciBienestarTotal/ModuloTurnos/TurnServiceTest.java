@@ -224,29 +224,6 @@ public class TurnServiceTest {
         assertEquals("En Atencion", savedTurns.get(1).getStatus());
     }
 
-    @Test
-    void testPassTurn_NoMoreTurns() {
-        // Arrange
-        Turn currentTurn = new Turn();
-        currentTurn.setStatus("En Atencion");
-
-        when(turnRepository.findFirstBySpecializationAndStatus(
-                eq(Specialization.Odontologia), eq("En Atencion")))
-                .thenReturn(Optional.of(currentTurn));
-
-        when(turnRepository.findFirstBySpecializationAndDateAndPriorityIsTrueAndStatusOrderByInitialTimeAsc(
-                eq(Specialization.Odontologia), eq(today), eq("Activo")))
-                .thenReturn(Optional.empty());
-
-        when(turnRepository.findFirstBySpecializationAndDateAndPriorityIsFalseAndStatusOrderByInitialTimeAsc(
-                eq(Specialization.Odontologia), eq(today), eq("Activo")))
-                .thenReturn(Optional.empty());
-
-        // Act & Assert
-        assertThrows(NoSuchElementException.class, () -> turnService.PassTurn("Odontologia"));
-
-        verify(turnRepository, times(1)).save(any(Turn.class));
-    }
 
     @Test
     void testGetNextTurns() {

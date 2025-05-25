@@ -11,6 +11,8 @@ import edu.eci.cvds.EciBienestarTotal.ModuloTurnos.Repository.TurnRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+
+import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -137,10 +139,7 @@ public class TurnService {
             turn.setStatus("En Atencion");
             turn.setAttendedTime(LocalTime.now());
             turnRepository.save(turn);
-            return;
         }
-
-        throw new NoSuchElementException("No hay turnos disponibles para la especialidad: " + specEnum);
     }
 
 
@@ -359,5 +358,6 @@ public class TurnService {
         turnDTO.setUserName(turn.getPatient());
         return turnDTO;
     }
+
 }
 
