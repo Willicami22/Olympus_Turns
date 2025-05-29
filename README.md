@@ -29,16 +29,27 @@ El **Módulo de Turnos** es un sistema de gestión de citas médicas diseñado p
 
 ## 🏗️ Arquitectura del Sistema
 src/
+
 ├── main/
+
 │   ├── java/edu/eci/cvds/EciBienestarTotal/ModuloTurnos/
+
 │   │   ├── Controller/          # Controladores REST
+
 │   │   ├── Service/             # Lógica de negocio
+
 │   │   ├── Repository/          # Acceso a datos
+
 │   │   ├── Entitie/             # Entidades de dominio
+
 │   │   ├── DTO/                 # Objetos de transferencia
+
 │   │   └── Enum/                # Enumeraciones
+
 │   └── resources/
+
 │       └── application.properties
+
 └── test/                        # Pruebas unitarias
 
 ## 📦 Instalación y Configuración
