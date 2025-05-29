@@ -113,53 +113,36 @@ Authorization: Bearer <tu-token-jwt>
 
 ## Tipos de Usuario y Roles
 
-Secretariao medica: Administrador del sistema, acceso completo
-
-Medico: Administra sus turnos segun la profesion
-
-Estudiante: Usuario básico
-
-Docente: Usuario académico
-
-Administrativo: Personal administrativo
-
-ServiciosGenerales: Personal de servicios
+- **Secretariao medica:** Administrador del sistema, acceso completo
+- **Medico:** Administra sus turnos segun la profesion
+- **Estudiante:** Usuario básico
+- **Docente:** Usuario académico
+- **Administrativo:** Personal administrativo
+- **ServiciosGenerales:** Personal de servicios
 
 ## Especialidades Médicas
 
-Psicología (Código: P-)
-
-Medicina General (Código: M-)
-
-Odontología (Código: O-)
+- Psicología (Código: P-)
+- Medicina General (Código: M-)
+- Odontología (Código: O-)
 
 ## Sistema de Discapacidades
 El sistema reconoce y prioriza usuarios con:
 
-Mayor de Edad: Usuarios de la tercera edad
-
-Disfunción Motriz: Limitaciones físicas
-
-Embarazo: Mujeres en estado de gestación
-
-Otra: Otras condiciones especiales
-
-No Tiene: Sin discapacidades
+- **Mayor de Edad:** Usuarios de la tercera edad
+- **Disfunción Motriz:** Limitaciones físicas
+- **Embarazo:** Mujeres en estado de gestación
+- **Otra:** Otras condiciones especiales
+- **No Tiene:** Sin discapacidades
 
 ## Reportes y Análisis
 El sistema genera reportes detallados que incluyen:
-
-Total de turnos por período
-
-Turnos completados vs. pendientes
-
-Tiempo promedio de espera y atención
-
-Distribución por roles de usuario
-
-Análisis de discapacidades por rol
-
-Exportación a Excel y PDF
+- Total de turnos por período
+- Turnos completados vs. pendientes
+- Tiempo promedio de espera y atención
+- Distribución por roles de usuario
+- Análisis de discapacidades por rol
+- Exportación a Excel y PDF
 
 ##  Testing
 Ejecutar todas las pruebas
@@ -182,10 +165,8 @@ Azure App Service
 
 El proyecto incluye configuración para despliegue automático en Azure:
 
-Pipeline CI/CD: .github/workflows/main_eciturnos.yml
-
-Entorno de producción: Configurado para Azure Web Apps
-
-Java Runtime: OpenJDK 17
+- **Pipeline CI/CD:** .github/workflows/main_eciturnos.yml
+- **Entorno de producción:** Configurado para Azure Web Apps
+- **Java Runtime:** OpenJDK 17
 
 
